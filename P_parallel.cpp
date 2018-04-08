@@ -28,11 +28,7 @@ int main(){
 	// Call vector add1 function
 	t_st = clock();
 	Vec_add1(N, v_a, v_b, v_c);
-	t_end = clock();
 	
-	Time1 = (t_end - t_st)/(double)CLOCKS_PER_SEC;
-	cout << "Cal time for add1 (sec) = " << Time1 << endl;
-		
 	// sum all values in the vector c
 	int sum=0;
 	for (int i=0; i<N; i++){
@@ -40,14 +36,17 @@ int main(){
 	}
 	cout << "sum1 = " << sum << endl;
 	
-	
-	// Call vector add2 function
-	t_st = clock();
-	Vec_add2(N, v_a, v_b, v_c);
 	t_end = clock();
 	
 	Time1 = (t_end - t_st)/(double)CLOCKS_PER_SEC;
 	cout << "Cal time for add1 (sec) = " << Time1 << endl;
+		
+	
+	
+	
+	// Call vector add2 function
+	t_st = clock();
+	Vec_add2(N, v_a, v_b, v_c);
 	
 	// sum all values in the vector c
 	sum=0;
@@ -55,6 +54,38 @@ int main(){
 		sum = sum + v_c[i];
 	}
 	cout << "sum2 = " << sum << endl;
+	
+	t_end = clock();
+	
+	Time1 = (t_end - t_st)/(double)CLOCKS_PER_SEC;
+	cout << "Cal time for add1 (sec) = " << Time1 << endl;
+	
+	
+	
+	
+	// Call vector add3 function
+	t_st = clock();
+	Vec_add3(N, v_a, v_b, v_c);
+	
+	// sum all values in the vector c
+	sum=0;
+	#pragma omp parallel for reduction(+:sum)
+	for (int i=0; i<N; i++){
+		sum = sum + v_c[i];
+	}
+	cout << "sum3 = " << sum << endl;
+	
+	t_end = clock();
+	
+	Time1 = (t_end - t_st)/(double)CLOCKS_PER_SEC;
+	cout << "Cal time for add1 (sec) = " << Time1 << endl;
+	
+	
+	// test
+	int test = 5;
+	#pragma omp parallel firstprivate(test)
+	cout << "id: " << omp_get_thread_num() << ", test = " << test << endl;
+	cout << "id: " << omp_get_thread_num() << ", test = " << test << endl;
 	
 	return 0;
 }
