@@ -5,16 +5,17 @@
 int main()
 {
 	int i;
-	double y_re[8], y_im[8], x_re[8], x_im[8];
-	for(i=0;i<8;++i)
+	const int N = 16;
+	double y_re[N], y_im[N], x_re[N], x_im[N];
+	for(i=0;i<N;++i)
 	{
 		x_re[i] = i;
 		x_im[i] = 0.0;
 	}
-	bit_reverse(x_re, x_im, 8);	
-	butterfly(x_re, x_im, 8);
+	bit_reverse(x_re, x_im, N);	
+	butterfly(x_re, x_im, N);
 	
-	for(i=0;i<8;++i)
+	for(i=0;i<N;++i)
 	{
 		printf("%f + %f i\n", x_re[i], x_im[i]);
 	}
@@ -32,7 +33,7 @@ int bit_reverse(double *x_re, double *x_im, int N)
     // p = 0 和 p = N-1 跟自己交換所以跳過 
     for(p=1;p<N-1;++p)
     {
-        //printf("%d <-> %d\n", p,q);
+        printf("%d <-> %d\n", p,q);
         if(p < q)
         {
             t = x_re[p];
