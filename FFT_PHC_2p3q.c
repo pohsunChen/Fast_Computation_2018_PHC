@@ -4,13 +4,12 @@
 #define DEGUB 1
 
 /// Function declaration
-void bit_reverse(double *x_re, double *x_im, int N, int base);
+void bit_reverse(double *x_re, double *x_im, int N);
 void butterfly(double *x_re, double *x_im, int N);
 
 int main(){
     int i;
-    const int N = 27;
-    int base;
+    const int N = 12;
     double x_re[N], x_im[N];
 
     for (i=0; i<N; i++){
@@ -19,10 +18,9 @@ int main(){
     }
 
     // bit-reverse
-    base = 3;
-    bit_reverse(x_re, x_im, N, base);
+    bit_reverse(x_re, x_im, N);
     // butterfly
-    butterfly(x_re, x_im, N);
+    //butterfly(x_re, x_im, N);
 
     // print results
     for (i=0; i<N; i++){
@@ -34,13 +32,22 @@ int main(){
 
 
 /// bit reverse for setting all input in place
-void bit_reverse(double *x_re, double *x_im, int N, int base){
+void bit_reverse(double *x_re, double *x_im, int N){
+	int base = 3;
     int m = N/base;    // added number which is highest bit
     int p, q;       // p & q is the index that exchanges for each other
     int k;          // k is use to check digital (log_2 k + 1) if is 1
     double temp;       // for temporary storage of number
 
-
+	
+	// degree of 2, 3, and 5
+	int d_2 = 2;
+	int d_3 = 1;
+	int d_5 = 0;
+	int d_t = d_2 + d_3 + d_5;	// total degree
+	int d_c;	// degree of current process
+	
+	
     // p is index before exchanging
     // from 0 to N-1 regularly
     // q is index after exchanging
@@ -64,8 +71,11 @@ void bit_reverse(double *x_re, double *x_im, int N, int base){
         // add highest bit into old q
         k = m;
         // if it needs to ¶i¦ì
+        base = 3;
         while(q>=(base-1)*k){
             q = q-(base-1)*k;    // (base-1) -> 0
+            if (q%3 != 0)
+            	base = 2;
             k = k/base;    // check next (right) digital
         }
         q = q+k;
