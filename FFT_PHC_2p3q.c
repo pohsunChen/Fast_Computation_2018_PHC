@@ -4,13 +4,18 @@
 #define DEGUB 1
 
 /// Function declaration
-void bit_reverse(double *x_re, double *x_im, int N);
+void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N);
 void butterfly(double *x_re, double *x_im, int N);
 
 int main(){
     int i;
     const int N = 12;
-    double x_re[N], x_im[N];
+    double *x_re, *x_im, *y_re, *y_im;
+    
+    x_re = (double*) malloc(N*sizeof(double));
+	x_im = (double*) malloc(N*sizeof(double));
+	y_re = (double*) malloc(N*sizeof(double));
+	y_im = (double*) malloc(N*sizeof(double));
 
     for (i=0; i<N; i++){
         x_re[i] = i;
@@ -18,36 +23,32 @@ int main(){
     }
 
     // bit-reverse
-    bit_reverse(x_re, x_im, N);
+    bit_reverse(x_re, x_im, y_re, y_im, N);
     // butterfly
     //butterfly(x_re, x_im, N);
-
+    
     // print results
     for (i=0; i<N; i++){
         printf("%f + %f i\n",x_re[i], x_im[i]);
     }
-
+    
     return 0;
 }
 
 
 /// bit reverse for setting all input in place
-void bit_reverse(double *x_re, double *x_im, int N){
+void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
 	int base = 3;
     int m = N/base;    // added number which is highest bit
     int p, q;       // p & q is the index that exchanges for each other
     int k;          // k is use to check digital (log_2 k + 1) if is 1
-    double temp;       // for temporary storage of number
 
 	
-	// degree of 2, 3, and 5
-	int d_2 = 2;
-	int d_3 = 1;
-	int d_5 = 0;
-	int d_t = d_2 + d_3 + d_5;	// total degree
-	int d_c;	// degree of current process
-	
-	
+	y_re[0] = x_re[0];
+    y_im[0] = x_im[0];
+	y_re[N-1] = x_re[N-1];
+    y_im[N-1] = x_im[N-1];
+    
     // p is index before exchanging
     // from 0 to N-1 regularly
     // q is index after exchanging
@@ -57,24 +58,20 @@ void bit_reverse(double *x_re, double *x_im, int N){
         #if DEGUB
         printf("%d <-> %d\n", p, q);
         #endif
-        // do half of array
-        if (p<q){
-            temp = x_re[p];
-            x_re[p] = x_re[q];
-            x_re[q] = temp;
-            temp = x_im[p];
-            x_im[p] = x_im[q];
-            x_im[q] = temp;
-        }
+        
+        // assign x to new place
+        y_re[p] = x_re[q];
+        y_im[p] = x_im[q];
+        
 
         // find next exchanged index q
         // add highest bit into old q
         k = m;
-        // if it needs to 進位
         base = 3;
+        // if it needs to 進位
         while(q>=(base-1)*k){
             q = q-(base-1)*k;    // (base-1) -> 0
-            if (q%3 != 0)
+            if (k%3 != 0)
             	base = 2;
             k = k/base;    // check next (right) digital
         }
