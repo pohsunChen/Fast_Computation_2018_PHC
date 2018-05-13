@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define DEGUB 1
+#define DEBUG 1
 
 /// Function declaration
 void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N);
@@ -28,9 +28,11 @@ int main(){
     butterfly(y_re, y_im, N);
     
     // print results
+    #if DEBUG
     for (i=0; i<N; i++){
         printf("%f + %f i\n",y_re[i], y_im[i]);
     }
+    #endif
     
     return 0;
 }
@@ -55,7 +57,7 @@ void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
     q = m;  // first index of exchanged number
     // skip p = 0 & N-1 because they are exchanged by themselves
     for (p=1; p<N-1; p++){
-        #if DEGUB
+        #if DEBUG
         printf("%d <-> %d\n", p, q);
         #endif
         
