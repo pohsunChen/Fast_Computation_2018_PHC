@@ -94,7 +94,7 @@ void butterfly(double *x_re, double *x_im, int N){
             // the rest of m/2 is counterpart of the first m/2
     int id[5];  // the index in LHS of butterfly (input1-5)
 	
-	double w_k_re[3][5], w_k_im[3][5], w_N_re[3][5], w_N_im[3][5];
+	double w_k_re[5], w_k_im[5], w_N_re[5], w_N_im[5];
     double w_but_re[3][5][5];
     double w_but_im[3][5][5];
     double temp, x_re_temp[5], x_im_temp[5];   // for temporary storage of number
@@ -108,10 +108,10 @@ void butterfly(double *x_re, double *x_im, int N){
     			w_but_re[i][j][t] = 0.0D;
     			w_but_im[i][j][t] = 0.0D;
 			}
-			w_k_re[i][j] = 0.0D;
-			w_k_im[i][j] = 0.0D;
-			w_N_re[i][j] = 0.0D;
-			w_N_im[i][j] = 0.0D;
+			w_k_re[j] = 0.0D;
+			w_k_im[j] = 0.0D;
+			w_N_re[j] = 0.0D;
+			w_N_im[j] = 0.0D;
 		}
 	}
     
@@ -134,15 +134,15 @@ void butterfly(double *x_re, double *x_im, int N){
         // Calculate multiplier of counterpart
         for (i=1; i<base[id_b]; i++){
         	// i=0 is useless
-        	w_k_re[id_b][i] = 1.0D;              // Re(W_{base^(i*m)}^0), multiplier counterpart
-        	w_k_im[id_b][i] = 0.0D;              // Im(W_{base^(i*m)}^0)
+        	w_k_re[i] = 1.0D;              // Re(W_{base^(i*m)}^0), multiplier counterpart
+        	w_k_im[i] = 0.0D;              // Im(W_{base^(i*m)}^0)
 		}
 		// i=0 is useless
-		w_N_re[id_b][1] =  cos(2.0D*M_PI/(m*base[id_b])); // Re(W_{5^m}^1)
-        w_N_im[id_b][1] = -sin(2.0D*M_PI/(m*base[id_b])); // Im(W_{5^m}^1)
+		w_N_re[1] =  cos(2.0D*M_PI/(m*base[id_b])); // Re(W_{5^m}^1)
+        w_N_im[1] = -sin(2.0D*M_PI/(m*base[id_b])); // Im(W_{5^m}^1)
 		for (i=2; i<base[id_b]; i++){
-			w_N_re[id_b][i] = w_N_re[id_b][i-1]*w_N_re[id_b][1] - w_N_im[id_b][i-1]*w_N_im[id_b][1]; // Re(W_{5^(i*m)}^1)
-        	w_N_im[id_b][i] = w_N_re[id_b][i-1]*w_N_im[id_b][1] + w_N_im[id_b][i-1]*w_N_re[id_b][1]; // Im(W_{5^(i*m)}^1)
+			w_N_re[i] = w_N_re[i-1]*w_N_re[1] - w_N_im[i-1]*w_N_im[1]; // Re(W_{5^(i*m)}^1)
+        	w_N_im[i] = w_N_re[i-1]*w_N_im[1] + w_N_im[i-1]*w_N_re[1]; // Im(W_{5^(i*m)}^1)
 		}
                                 
         // loop for each output (excluded counterpart) in a group (output no.)
@@ -160,8 +160,8 @@ void butterfly(double *x_re, double *x_im, int N){
                 // say, multiply W_{2^m}^k on x[q]
                 for (i=1; i<base[id_b]; i++){
                 	temp = x_re[id[i]];
-	                x_re[id[i]] = w_k_re[id_b][i]*x_re[id[i]] - w_k_im[id_b][i]*x_im[id[i]];
-	                x_im[id[i]] = w_k_re[id_b][i]*x_im[id[i]] + w_k_im[id_b][i]*temp;
+	                x_re[id[i]] = w_k_re[i]*x_re[id[i]] - w_k_im[i]*x_im[id[i]];
+	                x_im[id[i]] = w_k_re[i]*x_im[id[i]] + w_k_im[i]*temp;
 				}
 
 
@@ -201,9 +201,9 @@ void butterfly(double *x_re, double *x_im, int N){
             
             // calculate multiplier of next counterpart (with index k)
             for (i=1; i<base[id_b]; i++){
-            	temp = w_k_re[id_b][i];
-	            w_k_re[id_b][i] = w_k_re[id_b][i]*w_N_re[id_b][i] - w_k_im[id_b][i]*w_N_im[id_b][i];
-	            w_k_im[id_b][i] = temp*w_N_im[id_b][i] + w_k_im[id_b][i]*w_N_re[id_b][i];
+            	temp = w_k_re[i];
+	            w_k_re[i] = w_k_re[i]*w_N_re[i] - w_k_im[i]*w_N_im[i];
+	            w_k_im[i] = temp*w_N_im[i] + w_k_im[i]*w_N_re[i];
 			}
         }
         
