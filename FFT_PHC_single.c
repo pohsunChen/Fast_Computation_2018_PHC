@@ -91,7 +91,7 @@ void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
 void butterfly(double *x_re, double *x_im, int N){
 	int base[3];
 	int id_b_max = check_base(base, N); // set base and calculate id_b_max
-	int id_b = id_b_max;	// base id: 0 for base2, 1 for base3, and 2 for base5
+	int id_b;	// base id: 0 for base2, 1 for base3, and 2 for base5
     int m;  // m is number in each input group
             // it's also the difference between z and u
     int k;  // index in RHS of butterfly (output) (from 0 to m)
@@ -104,11 +104,13 @@ void butterfly(double *x_re, double *x_im, int N){
     double temp, x_re_temp[5], x_im_temp[5];   // for temporary storage of number
     int i, j, t;	// index for small loop
 
-
+	
+	
+	
     // initialization
     for (i=0; i<(id_b_max+1); i++){
-    	for (j=0; j<5; j++){
-    		for (t=0; t<5; t++){
+    	for (j=0; j<base[id_b_max]; j++){
+    		for (t=0; t<base[id_b_max]; t++){
     			w_but_re[i][j][t] = 0.0D;
     			w_but_im[i][j][t] = 0.0D;
 			}
@@ -121,8 +123,8 @@ void butterfly(double *x_re, double *x_im, int N){
 
     // set the multiplier on butterfly
     for (id_b=0; id_b<(id_b_max+1); id_b++){
-    	for (i=1; i<base[id_b]; i++){
-	    	for (j=1; j<base[id_b]; j++){
+    	for (i=1; i<base[id_b_max]; i++){
+	    	for (j=1; j<base[id_b_max]; j++){
 	    		w_but_re[id_b][i][j] =  cos((2.0D*M_PI/base[id_b])*i*j);
 	    		w_but_im[id_b][i][j] = -sin((2.0D*M_PI/base[id_b])*i*j);
 			}
