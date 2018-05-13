@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <windows.h>
-#define DEBUG 1
+#define DEGUB 1
 
 /// Function declaration
 void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N);
-void butterfly(double *x_re, double *x_im, int N, int *base, int id_b_max);
+void butterfly(double *x_re, double *x_im, int N);
 
 int main(){
     int i;
@@ -17,25 +16,7 @@ int main(){
 	x_im = (double*) malloc(N*sizeof(double));
 	y_re = (double*) malloc(N*sizeof(double));
 	y_im = (double*) malloc(N*sizeof(double));
-	
-	/// check if base exist
-	int base[3];
-	int id_b_max = 0;
-	if (N%2==0){
-		base[id_b_max] = 2;
-		id_b_max++;
-	}
-	if (N%3==0){
-		base[id_b_max] = 3;
-		id_b_max++;
-	}
-	if (N%5==0){
-		base[id_b_max] = 5;
-		id_b_max++;
-	}
-	id_b_max--;
-	
-	/// set input data
+
     for (i=0; i<N; i++){
         x_re[i] = i;
         x_im[i] = 0.0D;
@@ -44,16 +25,13 @@ int main(){
     // bit-reverse (2 -> 3 -> 5)
     bit_reverse(x_re, x_im, y_re, y_im, N);
     // butterfly (5 -> 3 -> 2)
-    butterfly(y_re, y_im, N, base, id_b_max);
+    butterfly(y_re, y_im, N);
     
-    printf("N = %d \n", N);
     // print results
-    #if DEBUG
     for (i=0; i<N; i++){
-        printf("%f + %f i\n",x_re[i], x_im[i]);
+        printf("%f + %f i\n",y_re[i], y_im[i]);
     }
-    #endif
-    printf("N = %d \n", N);
+    
     return 0;
 }
 
@@ -77,7 +55,7 @@ void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
     q = m;  // first index of exchanged number
     // skip p = 0 & N-1 because they are exchanged by themselves
     for (p=1; p<N-1; p++){
-        #if DEBUG
+        #if DEGUB
         printf("%d <-> %d\n", p, q);
         #endif
         
@@ -90,7 +68,7 @@ void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
         // add highest bit into old q
         k = m;
         base = 5;
-        // if it needs to ¶i¦ì
+        // if it needs to ?i|i
         while(q>=(base-1)*k){
             q = q-(base-1)*k;    // (base-1) -> 0
             if (k%5 != 0){
@@ -107,39 +85,21 @@ void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
 
 
 /// butterfly structure to recombine these input
-void butterfly(double *x_re, double *x_im, int N, int *base, int id_b_max){
-	int m;  // m is number in each input group
+void butterfly(double *x_re, double *x_im, int N){
+	int base[3] = {2, 3, 5};
+	int id_b = 2;	// base id: 0 for base2, 1 for base3, and 2 for base5
+    int m;  // m is number in each input group
             // it's also the difference between z and u
     int k;  // index in RHS of butterfly (output) (from 0 to m)
             // the rest of m/2 is counterpart of the first m/2
-    int *id;  // id[5], the index in LHS of butterfly (input1-5)
-	int id_b;	// base id: 0 for base2, 1 for base3, and 2 for base5
+    int id[5];  // the index in LHS of butterfly (input1-5)
 	
-	double *w_k_re, *w_k_im, *w_N_re, *w_N_im;	// w_k_re[5]
-    double ***w_but_re;	// w_but_re[3][5][5]
-    double ***w_but_im;
-    double temp, *x_re_temp, *x_im_temp;   // x_re_temp[5], for temporary storage of number
+	double w_k_re[5], w_k_im[5], w_N_re[5], w_N_im[5];
+    double w_but_re[3][5][5];
+    double w_but_im[3][5][5];
+    double temp, x_re_temp[5], x_im_temp[5];   // for temporary storage of number
     int i, j, t;	// index for small loop
     
-    
-    // allocate memory
-    id = (int *) malloc(base[id_b_max]*sizeof(int));
-    w_k_re = (double *) malloc(base[id_b_max]*sizeof(double));
-    w_k_im = (double *) malloc(base[id_b_max]*sizeof(double));
-    w_N_re = (double *) malloc(base[id_b_max]*sizeof(double));
-    w_N_im = (double *) malloc(base[id_b_max]*sizeof(double));
-    x_re_temp = (double *) malloc(base[id_b_max]*sizeof(double));
-    
-	w_but_re = (double ***) malloc((id_b_max+1)*sizeof(double**));
-    w_but_im = (double ***) malloc((id_b_max+1)*sizeof(double**));
-    for (i=0; i<(id_b_max+1); i++){
-    	w_but_re[i] = (double **) malloc(base[id_b_max]*sizeof(double*));
-    	w_but_im[i] = (double **) malloc(base[id_b_max]*sizeof(double*));
-    	for (j=0; j<base[id_b_max]; j++){
-    		w_but_re[i][j] = (double *) malloc(base[id_b_max]*sizeof(double));
-    		w_but_im[i][j] = (double *) malloc(base[id_b_max]*sizeof(double));
-		}
-	}
     
     // initialization
     for (i=0; i<3; i++){
@@ -168,7 +128,7 @@ void butterfly(double *x_re, double *x_im, int N, int *base, int id_b_max){
     
     
 	m = 1;
-	id_b = id_b_max;
+	id_b = 2;
     // loop for each steps of butterfly (step no.)
     while (m<N){
         // Calculate multiplier of counterpart
@@ -252,15 +212,4 @@ void butterfly(double *x_re, double *x_im, int N, int *base, int id_b_max){
 		if ((N/m)%base[id_b] != 0)
 			id_b--; 
     }
-    
-    
-    // print results
-    #if DEBUG
-    for (i=0; i<N; i++){
-        printf("%f + %f i\n",x_re[i], x_im[i]);
-    }
-	system("pause");
-	printf("N = %d \n", N);
-    #endif
-    
 }
