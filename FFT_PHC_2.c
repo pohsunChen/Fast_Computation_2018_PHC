@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define DEGUB 0
+#include <time.h>
+#define DEBUG 0
 
 /// Function declaration
 void bit_reverse(double *x_re, double *x_im, int N);
@@ -9,23 +10,36 @@ void butterfly(double *x_re, double *x_im, int N);
 
 int main(){
     int i;
-    const int N = 16;
+    const int N = pow(2,16);
     double x_re[N], x_im[N];
+    clock_t t1, t2;
+    double time;
 
     for (i=0; i<N; i++){
         x_re[i] = i;
         x_im[i] = 0.0D;
     }
 
+    t1 = clock();
     // bit-reverse
     bit_reverse(x_re, x_im, N);
+    t2 = clock();
     // butterfly
     butterfly(x_re, x_im, N);
 
+
+    time = (t2 - t1)/(double)CLOCKS_PER_SEC;
+
+
     // print results
+    #if DEBUG
     for (i=0; i<N; i++){
         printf("%f + %f i\n",x_re[i], x_im[i]);
     }
+    #endif
+
+    // show detail
+    printf("N = %d\nTime (sec) = %f", N, time);
 
     return 0;
 }
@@ -45,7 +59,7 @@ void bit_reverse(double *x_re, double *x_im, int N){
     q = m;  // first index of exchanged number
     // skip p = 0 & N-1 because they are exchanged by themselves
     for (p=1; p<N-1; p++){
-        #if DEGUB
+        #if DEBUG
         printf("%d <-> %d\n", p, q);
         #endif
         // do half of array

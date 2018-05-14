@@ -14,9 +14,9 @@ int main(){
     double *x_re, *x_im, *y_re, *y_im;
     int N_st, N_end;
     int d_2 = 0;
-	int d_3 = 0; 
+	int d_3 = 0;
 	int d_5 = 0;
-    
+
     int n_temp = N;		// for calculation of each degree
     while(n_temp%2==0){
     	d_2++;
@@ -30,7 +30,7 @@ int main(){
     	d_5++;
     	n_temp /= 5;
 	}
-    
+
     x_re = (double*) malloc(N*sizeof(double));
 	x_im = (double*) malloc(N*sizeof(double));
 
@@ -41,7 +41,7 @@ int main(){
 
     // bit-reverse
     bit_reverse(x_re, x_im, N);
-    
+
     // butterfly 3
     N_st = 1;
     N_end = pow(3,d_3);
@@ -50,12 +50,12 @@ int main(){
     N_st = N_end;
     N_end = N;
     butterfly2(x_re, x_im, N_st, N_end, N);
-    
+
     // print results
     for (i=0; i<N; i++){
         printf("%f + %f i\n",x_re[i], x_im[i]);
     }
-    
+
     return 0;
 }
 
@@ -67,15 +67,15 @@ void bit_reverse(double *x_re, double *x_im, int N){
     int p, q;       // p & q is the index that exchanges for each other
     int k;          // k is use to check digital (log_2 k + 1) if is 1
     double temp;       // for temporary storage of number
-    short *check;	// for check if no. has been changed 
-    
+    short *check;	// for check if no. has been changed
+
     // set check array
     check = (short*) malloc(N*sizeof(short));
     int i;
 	for (i=0; i<N; i++){
 		check[i] = 0;
 	}
-	
+
 	// for temp
 	double *y_re, *y_im;
 	y_re = (double*) malloc(N*sizeof(double));
@@ -84,8 +84,8 @@ void bit_reverse(double *x_re, double *x_im, int N){
 		y_re[i] = x_re[i];
 		y_im[i] = x_im[i];
 	}
-	
-	
+
+
     // p is index before exchanging
     // from 0 to N-1 regularly
     // q is index after exchanging
@@ -95,12 +95,12 @@ void bit_reverse(double *x_re, double *x_im, int N){
         #if DEGUB
         printf("%d <-> %d\n", p, q);
         #endif
-        
+
         // for temp
         x_re[p] = y_re[q];
         x_im[p] = y_im[q];
-                
-        
+
+
         // exchange x to new place
         // if both no. have been changed, skip this exchange
         /*if (check[p]==0 || check[q]==0){
@@ -110,7 +110,7 @@ void bit_reverse(double *x_re, double *x_im, int N){
             temp = x_im[p];
             x_im[p] = x_im[q];
             x_im[q] = temp;
-            
+
             // mark them as changed no.
             check[p] = 1;
             check[q] = 1;
@@ -154,7 +154,7 @@ void butterfly3(double *x_re, double *x_im, int N_st, int N_end, int N){
     		w_but_im_3[i][j] = -sin((2.0D*M_PI/base)*i*j);
 		}
 	}
-	
+
     double temp, temp1_re, temp1_im, temp2_re, temp2_im, temp3_re;   // for temporary storage of number
 
     // loop for each steps of butterfly (step no.)

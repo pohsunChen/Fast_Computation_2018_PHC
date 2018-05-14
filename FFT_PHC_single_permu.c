@@ -2,25 +2,24 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+
 #define DEBUG 0
 
 /// Function declaration
-void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N);
+void bit_reverse(double *x_re, double *x_im, int N);
 void butterfly(double *x_re, double *x_im, int N);
 void set_base(int *base, int N);
 int cal_id_b_max(int N);
 
 int main(){
     int i;
-    const int N = pow(3,10);
-    double *x_re, *x_im, *y_re, *y_im;
+    const int N = pow(2,0)*pow(3,10)*pow(5,0);
+    double *x_re, *x_im;
     clock_t t1, t2;
     double time;
 
     x_re = (double*) malloc(N*sizeof(double));
 	x_im = (double*) malloc(N*sizeof(double));
-	y_re = (double*) malloc(N*sizeof(double));
-	y_im = (double*) malloc(N*sizeof(double));
 
     for (i=0; i<N; i++){
         x_re[i] = i;
@@ -29,45 +28,49 @@ int main(){
 
     t1 = clock();
     // bit-reverse (2 -> 3 -> 5)
-    bit_reverse(x_re, x_im, y_re, y_im, N);
+    bit_reverse(x_re, x_im, N);
     // butterfly (5 -> 3 -> 2)
-    butterfly(y_re, y_im, N);
+    butterfly(x_re, x_im, N);
     t2 = clock();
     time = (t2 - t1)/(double)CLOCKS_PER_SEC;
-
 
     // print results
     #if DEBUG
     for (i=0; i<N; i++){
-        printf("%f + %f i\n",y_re[i], y_im[i]);
+        printf("%f + %f i\n",x_re[i], x_im[i]);
     }
     #endif
 
     // show detail
-    printf("N = %d\nTime (sec) = %f", N, time);
+    printf("N = %d\nTime (sec) = %f\n", N, time);
 
     return 0;
 }
 
 
 /// bit reverse for setting all input in place
-void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
+void bit_reverse(double *x_re, double *x_im, int N){
 	int id_b_max = cal_id_b_max(N);
 	int *base;
 	int id_b;   // index for base
     int m;    // highest bit
     int p, q;       // p & q is the index that exchanges for each other
     int k;          // k is use to check digital (log_2 k + 1) if is 1
+    int *check;     // record the no. which have been swapped
+    int record;
+    int i;
+    double temp;
+
+    // allocate and initiate check array
+    check = (int*) malloc(N*sizeof(int));
+    for (i=0; i<N; i++){
+        check[i] = 0;
+    }
 
     // set base
 	base = (int*) malloc((id_b_max+1)*sizeof(int));
 	set_base(base, N);
 
-    // p = 0 and N-1 are unchanged
-	y_re[0] = x_re[0];
-    y_im[0] = x_im[0];
-	y_re[N-1] = x_re[N-1];
-    y_im[N-1] = x_im[N-1];
 
     // p is index before exchanging
     // from 0 to N-1 regularly
@@ -76,13 +79,45 @@ void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
     q = m;  // first index of exchanged number
     // skip p = 0 & N-1 because they are exchanged by themselves
     for (p=1; p<N-1; p++){
+
         #if DEBUG
         printf("%d <-> %d\n", p, q);
         #endif
 
         // assign x to new place
-        y_re[p] = x_re[q];
-        y_im[p] = x_im[q];
+        if (check[q]==0){
+            // swap
+            temp = x_re[p];
+            x_re[p] = x_re[q];
+            x_re[q] = temp;
+            temp = x_im[p];
+            x_im[p] = x_im[q];
+            x_im[q] = temp;
+            // record
+            check[p] = q;
+        }
+        else{
+            // find the right index q to make re_x[p] right
+            record = q;
+            // trace the location of right q
+            while(check[q]!=0){
+                q = check[q];
+                if (q==p) break;
+
+            }
+            if (q!=p){
+                // swap
+                temp = x_re[p];
+                x_re[p] = x_re[q];
+                x_re[q] = temp;
+                temp = x_im[p];
+                x_im[p] = x_im[q];
+                x_im[q] = temp;
+                // record
+                check[p] = q;
+            }
+            q = record;
+        }
 
 
         // find next exchanged index q
@@ -92,10 +127,11 @@ void bit_reverse(double *x_re, double *x_im, double *y_re, double*y_im, int N){
         // if it needs to add 1 to right digital
         while(q>=(base[id_b]-1)*k){
             q = q-(base[id_b]-1)*k;    // (base-1) -> 0
-            if ((k%base[id_b]) != 0){
-            	id_b--;
-			}
+            if (id_b_max!=0)
+                if ((k%base[id_b]) != 0)
+                    id_b--;
             k = k/base[id_b];    // check next (right) digital
+
         }
         q = q+k;
     }
@@ -119,7 +155,8 @@ void butterfly(double *x_re, double *x_im, int N){
     double ***w_but_im;
     double temp, *x_re_temp, *x_im_temp;   // for temporary storage of number
     int i, j, t;	// index for small loop
-
+clock_t t1, t2;
+double time;
 
 	// set base
 	base = (int*) malloc((id_b_max+1)*sizeof(int));
@@ -167,7 +204,7 @@ void butterfly(double *x_re, double *x_im, int N){
 		}
 	}
 
-
+t1 = clock();
 	m = 1;
 	id_b = id_b_max;
     // loop for each steps of butterfly (step no.)
@@ -204,7 +241,7 @@ void butterfly(double *x_re, double *x_im, int N){
 	                x_re[id[i]] = w_k_re[i]*x_re[id[i]] - w_k_im[i]*x_im[id[i]];
 	                x_im[id[i]] = w_k_re[i]*x_im[id[i]] + w_k_im[i]*temp;
 				}
-
+/*
 
                 ///// apply butterfly structure/////
                 // to calculate x_p and x_q (counterpart).
@@ -220,11 +257,17 @@ void butterfly(double *x_re, double *x_im, int N){
                 	x_re[id[0]] += x_re[id[j]];
             	// loop for each counterpart
             	for (i=1; i<base[id_b]; i++){
-            		x_re[id[i]] = x_re_temp[0];
-            		// loop for each input
-					for(j=1; j<base[id_b]; j++){
-	            		x_re[id[i]] += (w_but_re[id_b][i][j]*x_re_temp[j] - w_but_im[id_b][i][j]*x_im_temp[j]);
-					}
+                    if (base[id_b]==2){
+                        // special case for base 2
+                        x_re[id[i]] = x_re_temp[0] - x_re[id[i]];
+                    }
+                    else{
+                        x_re[id[i]] = x_re_temp[0];
+                        // loop for each input
+                        for(j=1; j<base[id_b]; j++){
+                            x_re[id[i]] += (w_but_re[id_b][i][j]*x_re_temp[j] - w_but_im[id_b][i][j]*x_im_temp[j]);
+                        }
+                    }
 				}
 
 				/// imaginary part
@@ -232,12 +275,18 @@ void butterfly(double *x_re, double *x_im, int N){
                 	x_im[id[0]] += x_im[id[j]];
             	// loop for each counterpart
             	for (i=1; i<base[id_b]; i++){
-            		x_im[id[i]] = x_im_temp[0];
-            		// loop for each input
-					for(j=1; j<base[id_b]; j++){
-	            		x_im[id[i]] += (w_but_re[id_b][i][j]*x_im_temp[j] + w_but_im[id_b][i][j]*x_re_temp[j]);
-					}
+                    if (base[id_b]==2){
+                        x_im[id[i]] = x_im_temp[0] - x_im[id[i]];
+                    }
+                    else{
+                        x_im[id[i]] = x_im_temp[0];
+                        // loop for each input
+                        for(j=1; j<base[id_b]; j++){
+                            x_im[id[i]] += (w_but_re[id_b][i][j]*x_im_temp[j] + w_but_im[id_b][i][j]*x_re_temp[j]);
+                        }
+                    }
 				}
+*/
             }
 
             // calculate multiplier of next counterpart (with index k)
@@ -253,6 +302,10 @@ void butterfly(double *x_re, double *x_im, int N){
 		if ((N/m)%base[id_b] != 0)
 			id_b--;
     }
+
+t2 = clock();
+time = (t2 - t1)/(double)CLOCKS_PER_SEC;
+printf("N = %d\nTime (sec) = %f\n", N, time);
 }
 
 
