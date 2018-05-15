@@ -13,7 +13,7 @@ int cal_id_b_max(int N);
 
 int main(){
     int i;
-    const int N = pow(2,0)*pow(3,10)*pow(5,0);
+    const int N = pow(2,2)*pow(3,2)*pow(5,2);
     double *x_re, *x_im;
     clock_t t1, t2;
     double time;
@@ -155,8 +155,7 @@ void butterfly(double *x_re, double *x_im, int N){
     double ***w_but_im;
     double temp, *x_re_temp, *x_im_temp;   // for temporary storage of number
     int i, j, t;	// index for small loop
-clock_t t1, t2;
-double time;
+
 
 	// set base
 	base = (int*) malloc((id_b_max+1)*sizeof(int));
@@ -175,8 +174,8 @@ double time;
         w_but_re[i] = (double**) malloc(base[id_b_max]*sizeof(double*));
         w_but_im[i] = (double**) malloc(base[id_b_max]*sizeof(double*));
         for (j=0; j<base[id_b_max]; j++){
-            w_but_re[i][j] = (double**) malloc(base[id_b_max]*sizeof(double));
-            w_but_im[i][j] = (double**) malloc(base[id_b_max]*sizeof(double));
+            w_but_re[i][j] = (double*) malloc(base[id_b_max]*sizeof(double));
+            w_but_im[i][j] = (double*) malloc(base[id_b_max]*sizeof(double));
         }
     }
 
@@ -204,7 +203,7 @@ double time;
 		}
 	}
 
-t1 = clock();
+
 	m = 1;
 	id_b = id_b_max;
     // loop for each steps of butterfly (step no.)
@@ -241,7 +240,7 @@ t1 = clock();
 	                x_re[id[i]] = w_k_re[i]*x_re[id[i]] - w_k_im[i]*x_im[id[i]];
 	                x_im[id[i]] = w_k_re[i]*x_im[id[i]] + w_k_im[i]*temp;
 				}
-/*
+
 
                 ///// apply butterfly structure/////
                 // to calculate x_p and x_q (counterpart).
@@ -286,7 +285,7 @@ t1 = clock();
                         }
                     }
 				}
-*/
+
             }
 
             // calculate multiplier of next counterpart (with index k)
@@ -302,10 +301,6 @@ t1 = clock();
 		if ((N/m)%base[id_b] != 0)
 			id_b--;
     }
-
-t2 = clock();
-time = (t2 - t1)/(double)CLOCKS_PER_SEC;
-printf("N = %d\nTime (sec) = %f\n", N, time);
 }
 
 

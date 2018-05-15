@@ -1,22 +1,40 @@
 #include <stdio.h>
 #include <stdlib.h> 
 #include <math.h>
+#include <time.h>
 int main()
 {
 	int i;
-	double y_re[8], y_im[8], x_re[8], x_im[8];
-	for(i=0;i<8;++i)
+	const int N = pow(2,16);
+	double *y_re, *y_im, *x_re, *x_im;
+	clock_t t1, t2;
+    double time;
+    
+    
+	x_re = (double*) malloc(N*sizeof(double));
+	x_im = (double*) malloc(N*sizeof(double));
+	y_re = (double*) malloc(N*sizeof(double));
+	y_im = (double*) malloc(N*sizeof(double));
+	for(i=0;i<N;++i)
 	{
-		x_re[i] = i+1;
+		x_re[i] = i;
 		x_im[i] = 0.0;
 	}
-	Fast_Fourier_Transform(y_re, y_im, x_re, x_im, 8);
-	for(i=0;i<8;++i)
+	
+	t1 = clock();
+	
+	Fast_Fourier_Transform(y_re, y_im, x_re, x_im, N);
+	
+	t2 = clock();
+    time = (t2 - t1)/(double)CLOCKS_PER_SEC;
+	
+	for(i=0;i<N;++i)
 	{
-		printf("%f + %f i\n", y_re[i], y_im[i]);
+		//printf("%f + %f i\n", y_re[i], y_im[i]);
 	}
 	
-	 
+	 // show detail
+    printf("N = %d\nTime (sec) = %f", N, time);
 }
 int Fast_Fourier_Transform(double *y_re, double *y_im, double *x_re, double *x_im, int N)
 {

@@ -11,11 +11,14 @@ void butterfly(double *x_re, double *x_im, int N);
 
 int main(){
     int i;
-    const int N = pow(3,15);
-    double x_re[N], x_im[N];
+    const int N = pow(3,12);
+    double *x_re, *x_im;
     clock_t t1, t2;
     double time;
 
+	x_re = (double*) malloc(N*sizeof(double));
+	x_im = (double*) malloc(N*sizeof(double));
+	
     for (i=0; i<N; i++){
         x_re[i] = i;
         x_im[i] = 0.0D;
@@ -26,6 +29,7 @@ int main(){
     bit_reverse(x_re, x_im, N);
     // butterfly
     butterfly(x_re, x_im, N);
+    
     t2 = clock();
     time = (t2 - t1)/(double)CLOCKS_PER_SEC;
 
@@ -93,8 +97,7 @@ void butterfly(double *x_re, double *x_im, int N){
     int p;  // the first index in LHS of butterfly (input1)
     int q;  // the second index in LHS of butterfly (input2)
     int s;  // the third index in LHS of butterfly (input3)
-clock_t t1, t2;
-double time;
+
     double w_k_re, w_k_im, w_N_re, w_N_im;
     double w_2k_re, w_2k_im, w_N_2_re, w_N_2_im;
     double w_but_re_3[3][3];
@@ -107,7 +110,7 @@ double time;
 		}
 	}
     double temp, temp1_re, temp1_im, temp2_re, temp2_im, temp3_re;   // for temporary storage of number
-t1 = clock();
+
     // loop for each steps of butterfly (step no.)
     for (m=1; m<N; m*=3){
         // Calculate multiplier of counterpart
@@ -166,9 +169,6 @@ t1 = clock();
             w_2k_im = temp   *w_N_2_im + w_2k_im*w_N_2_re;
         }
     }
-t2 = clock();
-time = (t2 - t1)/(double)CLOCKS_PER_SEC;
-printf("N = %d\nTime (sec) = %f\n", N, time);
 }
 
 

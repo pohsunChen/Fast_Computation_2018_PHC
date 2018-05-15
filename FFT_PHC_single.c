@@ -12,7 +12,7 @@ int cal_id_b_max(int N);
 
 int main(){
     int i;
-    const int N = pow(3,10);
+    const int N = pow(2,2)*pow(3,0)*pow(5,2);
     double *x_re, *x_im, *y_re, *y_im;
     clock_t t1, t2;
     double time;
@@ -138,8 +138,8 @@ void butterfly(double *x_re, double *x_im, int N){
         w_but_re[i] = (double**) malloc(base[id_b_max]*sizeof(double*));
         w_but_im[i] = (double**) malloc(base[id_b_max]*sizeof(double*));
         for (j=0; j<base[id_b_max]; j++){
-            w_but_re[i][j] = (double**) malloc(base[id_b_max]*sizeof(double));
-            w_but_im[i][j] = (double**) malloc(base[id_b_max]*sizeof(double));
+            w_but_re[i][j] = (double*) malloc(base[id_b_max]*sizeof(double));
+            w_but_im[i][j] = (double*) malloc(base[id_b_max]*sizeof(double));
         }
     }
 

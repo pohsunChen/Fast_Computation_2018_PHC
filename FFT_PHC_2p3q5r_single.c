@@ -9,13 +9,11 @@ void bit_reverse(double *x_re, double *x_im, int N);
 void butterfly5(double *x_re, double *x_im, int N_st, int N_end, int N);
 void butterfly3(double *x_re, double *x_im, int N_st, int N_end, int N);
 void butterfly2(double *x_re, double *x_im, int N_st, int N_end, int N);
-void set_base(int *base, int N);
-int cal_id_b_max(int N);
 
 
 int main(){
     int i;
-    int N = pow(2,4)*pow(3,4)*pow(5,4) + 0.5D;
+    int N = pow(2,16)*pow(3,0)*pow(5,0) + 0.5D;
     double *x_re, *x_im, *y_re, *y_im;
     int N_st, N_end;
     int d_2 = 0;
@@ -23,17 +21,19 @@ int main(){
 	int d_5 = 0;
 	clock_t t1, t2;
     double time;
+    
+    
     // set raw data
     x_re = (double*) malloc(N*sizeof(double));
 	x_im = (double*) malloc(N*sizeof(double));
-
     for (i=0; i<N; i++){
         x_re[i] = i;
         x_im[i] = 0;
     }
 
-t1 = clock();
 
+	t1 = clock();
+	
     // calculate degree
     int n_temp = N;		// for calculation of each degree
     while(n_temp%2==0){
@@ -51,24 +51,20 @@ t1 = clock();
 
     // bit-reverse
     bit_reverse(x_re, x_im, N);
-t2 = clock();
-
 	// butterfly 5
     N_st = 1;
     N_end = pow(5,d_5) + 0.5D;
     butterfly5(x_re, x_im, N_st, N_end, N);
-
     // butterfly 3
     N_st = N_end;
     N_end = pow(3,d_3)*pow(5,d_5) + 0.5D;
     butterfly3(x_re, x_im, N_st, N_end, N);
-
     // butterfly 2
     N_st = N_end;
     N_end = N;
-    printf("N_st = %d, N_end = %d\n", N_st, N_end);
     butterfly2(x_re, x_im, N_st, N_end, N);
-
+    
+	t2 = clock();
     time = (t2 - t1)/(double)CLOCKS_PER_SEC;
 
 	// print results
@@ -88,39 +84,49 @@ t2 = clock();
 
 /// bit reverse for setting all input in place
 void bit_reverse(double *x_re, double *x_im, int N){
-	int id_b_max = cal_id_b_max(N);
-	int *base;
+	int base, base_max, N_base;
 	int id_b;   // index for base
     int m;    // highest bit
     int p, q;       // p & q is the index that exchanges for each other
     int k;          // k is use to check digital (log_2 k + 1) if is 1
-    int *check;     // record the no. which have been swapped
     int record;
     int i;
     double temp;
 
-    // allocate and initiate check array
-    check = (int*) malloc(N*sizeof(int));
-    for (i=0; i<N; i++){
-        check[i] = 0;
-    }
 
     // set base
-	base = (int*) malloc((id_b_max+1)*sizeof(int));
-	set_base(base, N);
+    i=0;
+	if (N%2 == 0){
+		base = 2;
+		i++;
+	}
+	if (N%3 == 0){
+		base = 3;
+		i++;
+	}
+	if (N%5 == 0){
+		base = 5;
+		i++;
+	}
+	N_base = --i;
+    base_max = base;
 
-    double *y_re, *y_im;
-    y_re = (double*) malloc(N*sizeof(double));
-    y_im = (double*) malloc(N*sizeof(double));
-    for (i=0; i<N; i++){
-        y_re[i] = x_re[i];
-        y_im[i] = x_im[i];
-    }
+	// set temporary array
+	double *y_re, *y_im;
+	if (N_base != 0){
+	    y_re = (double*) malloc(N*sizeof(double));
+	    y_im = (double*) malloc(N*sizeof(double));
+	    for (i=0; i<N; i++){
+	        y_re[i] = x_re[i];
+	        y_im[i] = x_im[i];
+	    }
+	}
+    
 
     // p is index before exchanging
     // from 0 to N-1 regularly
     // q is index after exchanging
-    m = N/base[id_b_max];    // added number which is highest bit
+    m = N/base;    // added number which is highest bit
     q = m;  // first index of exchanged number
     // skip p = 0 & N-1 because they are exchanged by themselves
     for (p=1; p<N-1; p++){
@@ -128,59 +134,48 @@ void bit_reverse(double *x_re, double *x_im, int N){
         #if DEBUG
         printf("%d <-> %d\n", p, q);
         #endif
-        x_re[p] = y_re[q];
-        x_im[p] = y_im[q];
-/*
-        // assign x to new place
-        if (check[q]==0){
-            // swap
+        
+		if (N_base != 0){
+			x_re[p] = y_re[q];
+        	x_im[p] = y_im[q];
+		}
+		else if(p<q){
             temp = x_re[p];
             x_re[p] = x_re[q];
             x_re[q] = temp;
             temp = x_im[p];
             x_im[p] = x_im[q];
             x_im[q] = temp;
-            // record
-            check[p] = q;
-        }
-        else{
-            // find the right index q to make re_x[p] right
-            record = q;
-            // trace the location of right q
-            while(check[q]!=0){
-                q = check[q];
-                if (q==p) break;
-
-            }
-            if (q!=p){
-                // swap
-                temp = x_re[p];
-                x_re[p] = x_re[q];
-                x_re[q] = temp;
-                temp = x_im[p];
-                x_im[p] = x_im[q];
-                x_im[q] = temp;
-                // record
-                check[p] = q;
-            }
-            q = record;
         }
 
-*/
         // find next exchanged index q
         // add highest bit into old q
         k = m;
-        id_b = id_b_max;
+        base = base_max;
         // if it needs to add 1 to right digital
-        while(q>=(base[id_b]-1)*k){
-            q = q-(base[id_b]-1)*k;    // (base-1) -> 0
-            if (id_b_max!=0)
-                if ((k%base[id_b]) != 0)
-                    id_b--;
-            k = k/base[id_b];    // check next (right) digital
+        while(q>=(base-1)*k){
+            q = q-(base-1)*k;    // (base-1) -> 0
+            if (N_base!=0)
+                if ((k%base) != 0){
+                	printf("base = %d, k = %d\n",base, k);
+                    if (base==5){
+                    	base = 3;
+                    	if ((k%base) != 0)
+                        	base = 2;
+					}
+                    else
+                        base = 2;
+                }
+            k = k/base;    // check next (right) digital
         }
         q = q+k;
     }
+    printf("test");
+    // free memory
+    if (N_base != 0){
+    	free(y_re);
+    	free(y_im);
+	}
 }
 
 
@@ -490,42 +485,4 @@ void butterfly2(double *x_re, double *x_im, int N_st, int N_end, int N){
     }
 }
 
-
-
-int cal_id_b_max(int N){
-    int id_b_max = 0;
-	if (N%2 == 0){
-        id_b_max++;
-	}
-	if (N%3 == 0){
-		id_b_max++;
-	}
-	if (N%5 == 0){
-		id_b_max++;
-	}
-	if (N%7 == 0){
-		id_b_max++;
-	}
-	return --id_b_max;
-}
-
-void set_base(int *base, int N){
-    int i=0;
-	if (N%2 == 0){
-		base[i] = 2;
-		i++;
-	}
-	if (N%3 == 0){
-		base[i] = 3;
-		i++;
-	}
-	if (N%5 == 0){
-		base[i] = 5;
-		i++;
-	}
-	if (N%7 == 0){
-		base[i] = 7;
-		i++;
-	}
-}
 

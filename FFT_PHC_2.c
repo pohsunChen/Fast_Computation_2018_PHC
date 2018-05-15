@@ -21,13 +21,13 @@ int main(){
     }
 
     t1 = clock();
+    
     // bit-reverse
     bit_reverse(x_re, x_im, N);
-    t2 = clock();
     // butterfly
     butterfly(x_re, x_im, N);
-
-
+    
+	t2 = clock();
     time = (t2 - t1)/(double)CLOCKS_PER_SEC;
 
 
