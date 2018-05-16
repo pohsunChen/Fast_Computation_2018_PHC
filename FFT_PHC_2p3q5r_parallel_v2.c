@@ -3,7 +3,7 @@
 #include <math.h>
 #include <time.h>
 #include <omp.h>
-#define DEBUG 0
+#define DEBUG 1
 
 /// Function declaration
 void bit_reverse(double *x_re, double *x_im, int N);
@@ -14,7 +14,7 @@ void butterfly2(double *x_re, double *x_im, int N_st, int N_end, int N);
 
 int main(){
     int i;
-    int N = pow(2,20)*pow(3,0)*pow(5,0) + 0.5D;
+    int N = pow(2,0)*pow(3,5)*pow(5,0) + 0.5D;
     double *x_re, *x_im, *y_re, *y_im;
     int N_st, N_end;
     int d_2 = 0;
@@ -52,6 +52,7 @@ int main(){
 
     // bit-reverse
     bit_reverse(x_re, x_im, N);
+    
 	// butterfly 5
     N_st = 1;
     N_end = pow(5,d_5) + 0.5D;
@@ -178,6 +179,7 @@ void bit_reverse(double *x_re, double *x_im, int N){
     	free(y_im);
 	}
 }
+
 
 
 
@@ -354,13 +356,12 @@ void butterfly3(double *x_re, double *x_im, int N_st, int N_end, int N){
     int p;  // the first index in LHS of butterfly (input1)
     int q;  // the second index in LHS of butterfly (input2)
     int s;  // the third index in LHS of butterfly (input3)
-
-    double w_k_re, w_k_im, w_N_re, w_N_im;
-    double w_2k_re, w_2k_im, w_N_2_re, w_N_2_im;
+	
     double w_but_re_11, w_but_re_12, w_but_re_22;
     double w_but_im_11, w_but_im_12, w_but_im_22;
     int i, j;
-
+	int N_thre = 2;
+	
     w_but_re_11 =  cos((2.0D*M_PI/base));
     w_but_re_12 =  cos((2.0D*M_PI/base)*2.0D);
     w_but_re_22 =  cos((2.0D*M_PI/base)*4.0D);
@@ -368,65 +369,71 @@ void butterfly3(double *x_re, double *x_im, int N_st, int N_end, int N){
     w_but_im_12 =  -sin((2.0D*M_PI/base)*2.0D);
     w_but_im_22 =  -sin((2.0D*M_PI/base)*4.0D);
 
-    double temp, temp1_re, temp1_im, temp2_re, temp2_im, temp3_re;   // for temporary storage of number
+    
 
     // loop for each steps of butterfly (step no.)
     for (m=N_st; m<N_end; m*=base){
-        // Calculate multiplier of counterpart
-        w_k_re = 1.0D;              // Re(W_{3^m}^0), multiplier of first counterpart
-        w_k_im = 0.0D;              // Im(W_{3^m}^0)
-        w_2k_re = 1.0D;             // Re(W_{3^2m}^0)
-        w_2k_im = 0.0D;             // Re(W_{3^2m}^0)
-        w_N_re =  cos(2.0D*M_PI/(m*base)); // Re(W_{3^m}^1)
-        w_N_im = -sin(2.0D*M_PI/(m*base)); // Im(W_{3^m}^1)
-        w_N_2_re = w_N_re*w_N_re - w_N_im*w_N_im;  // Re(W_{3^m}^2)
-        w_N_2_im = 2.0D*w_N_re*w_N_im;  // Im(W_{3^m}^2)
-                                // note that there is a minus sign for W_N = e^{-2PI/N}
-        // loop for each output in a group (output no.)
-        for (k=0; k<m; k++){
-            // loop for each group (group no.)
-            for (p=k; p<N; p+=base*m){
-                // Calculate output of butterfly
-                // find index of counterpart q
-                q = p + m;
-                s = q + m;
-                // apply multiplier of counterpart
-                // say, multiply W_{2^m}^k on x[q]
-                temp = x_re[q];
-                x_re[q] = w_k_re*x_re[q] - w_k_im*x_im[q];
-                x_im[q] = w_k_re*x_im[q] + w_k_im*temp;
-                temp = x_re[s];
-                x_re[s] = w_2k_re*x_re[s] - w_2k_im*x_im[s];
-                x_im[s] = w_2k_re*x_im[s] + w_2k_im*temp;
-
-                // apply butterfly structure
-                // to calculate x_p and x_q (counterpart).
-                // here we calculate by input multiplied with
-                // FFT_3_Matrix(multiplier on butterfly)
-                temp1_re = x_re[p];
-                temp2_re = x_re[q];
-                temp3_re = x_re[s];
-                x_re[p] = x_re[p] + x_re[q] + x_re[s];
-                x_re[q] = temp1_re + (w_but_re_11*x_re[q] - w_but_im_11*x_im[q]) \
-								   + (w_but_re_12*x_re[s] - w_but_im_12*x_im[s]);
-                x_re[s] = temp1_re + (w_but_re_12*temp2_re - w_but_im_12*x_im[q]) \
-								   + (w_but_re_22*x_re[s] - w_but_im_22*x_im[s]);
-                temp1_im = x_im[p];
-                temp2_im = x_im[q];
-                x_im[p] = x_im[p] + x_im[q] + x_im[s];
-                x_im[q] = temp1_im + (w_but_re_11*x_im[q] + w_but_im_11*temp2_re) \
-								   + (w_but_re_12*x_im[s] + w_but_im_12*temp3_re);
-                x_im[s] = temp1_im + (w_but_re_12*temp2_im + w_but_im_12*temp2_re) \
-								   + (w_but_re_22*x_im[s] + w_but_im_22*temp3_re);
-            }
-            // calculate multiplier of next counterpart (with index k)
-            temp = w_k_re;
-            w_k_re = w_k_re*w_N_re - w_k_im*w_N_im;
-            w_k_im = temp  *w_N_im + w_k_im*w_N_re;
-            temp = w_2k_re;
-            w_2k_re = w_2k_re*w_N_2_re - w_2k_im*w_N_2_im;
-            w_2k_im = temp   *w_N_2_im + w_2k_im*w_N_2_re;
-        }
+        
+		#pragma omp parallel num_threads(N_thre) private(k,p,q)
+		{
+			int id_t = omp_get_thread_num();
+			double temp, temp1_re, temp1_im, temp2_re, temp2_im, temp3_re;   // for temporary storage of number
+			// Calculate multiplier of counterpart
+	        double w_k_re = cos(2.0D*M_PI/(m*base)*id_t);       // Re(W_{3^m}^id_t)
+        	double w_k_im = -sin(2.0D*M_PI/(m*base)*id_t);      // Im(W_{3^m}^id_t)
+	        double w_2k_re = w_k_re*w_k_re - w_k_im*w_k_im;		// Re(W_{3^m}^2*id_t)
+	        double w_2k_im = 2.0D*w_k_re*w_k_im;             	// Re(W_{3^m}^2*id_t)
+	        double w_N_re =  cos(2.0D*M_PI/(m*base)*N_thre); 	// Re(W_{3^m}^N_thre)
+	        double w_N_im = -sin(2.0D*M_PI/(m*base)*N_thre); 	// Im(W_{3^m}^N_thre)
+	        double w_N_2_re = w_N_re*w_N_re - w_N_im*w_N_im;  	// Re(W_{3^m}^{2*N_thre})
+	        double w_N_2_im = 2.0D*w_N_re*w_N_im;  				// Im(W_{3^m}^{2*N_thre})
+	        
+	        // loop for each output in a group (output no.)
+	        for (k=id_t; k<m; k+=N_thre){
+	            // loop for each group (group no.)
+	            for (p=k; p<N; p+=base*m){
+	                // Calculate output of butterfly
+	                // find index of counterpart q
+	                q = p + m;
+	                s = q + m;
+	                // apply multiplier of counterpart
+	                // say, multiply W_{2^m}^k on x[q]
+	                temp = x_re[q];
+	                x_re[q] = w_k_re*x_re[q] - w_k_im*x_im[q];
+	                x_im[q] = w_k_re*x_im[q] + w_k_im*temp;
+	                temp = x_re[s];
+	                x_re[s] = w_2k_re*x_re[s] - w_2k_im*x_im[s];
+	                x_im[s] = w_2k_re*x_im[s] + w_2k_im*temp;
+	
+	                // apply butterfly structure
+	                // to calculate x_p and x_q (counterpart).
+	                // here we calculate by input multiplied with
+	                // FFT_3_Matrix(multiplier on butterfly)
+	                temp1_re = x_re[p];
+	                temp2_re = x_re[q];
+	                temp3_re = x_re[s];
+	                x_re[p] = x_re[p] + x_re[q] + x_re[s];
+	                x_re[q] = temp1_re + (w_but_re_11*x_re[q] - w_but_im_11*x_im[q]) \
+									   + (w_but_re_12*x_re[s] - w_but_im_12*x_im[s]);
+	                x_re[s] = temp1_re + (w_but_re_12*temp2_re - w_but_im_12*x_im[q]) \
+									   + (w_but_re_22*x_re[s] - w_but_im_22*x_im[s]);
+	                temp1_im = x_im[p];
+	                temp2_im = x_im[q];
+	                x_im[p] = x_im[p] + x_im[q] + x_im[s];
+	                x_im[q] = temp1_im + (w_but_re_11*x_im[q] + w_but_im_11*temp2_re) \
+									   + (w_but_re_12*x_im[s] + w_but_im_12*temp3_re);
+	                x_im[s] = temp1_im + (w_but_re_12*temp2_im + w_but_im_12*temp2_re) \
+									   + (w_but_re_22*x_im[s] + w_but_im_22*temp3_re);
+	            }
+	            // calculate multiplier of next counterpart (with index k)
+	            temp = w_k_re;
+	            w_k_re = w_k_re*w_N_re - w_k_im*w_N_im;
+	            w_k_im = temp  *w_N_im + w_k_im*w_N_re;
+	            temp = w_2k_re;
+	            w_2k_re = w_2k_re*w_N_2_re - w_2k_im*w_N_2_im;
+	            w_2k_im = temp   *w_N_2_im + w_2k_im*w_N_2_re;
+	        }
+		}
     }
 }
 
@@ -434,68 +441,63 @@ void butterfly3(double *x_re, double *x_im, int N_st, int N_end, int N){
 
 /// butterfly structure to recombine these input
 void butterfly2(double *x_re, double *x_im, int N_st, int N_end, int N){
-    int m;  // m is half of number in each group
+    int base = 2;
+	int m;  // m is half of number in each group
             // it's also the difference between z and u
     int k;  // index in RHS of butterfly (output) (from 0 to m)
             // the rest of m/2 is counterpart of the first m/2
     int p;  // the first index in LHS of butterfly (input1)
     int q;  // the second index in LHS of butterfly (input2)
+	int N_thre = omp_get_max_threads();
+    
 
-int M = N/4;        
+    // loop for each steps of butterfly (step no.)
+    for (m=N_st; m<N_end; m*=base){
+		
+		// parallel the task
+		#pragma omp parallel num_threads(N_thre) private(k,p,q)
+		{
+			int id_t = omp_get_thread_num();
+			double temp;   // for temporary storage of number
+			
+			// Calculate multiplier of counterpart
+			double w_re = cos(M_PI/m*id_t);       // Re(W_{2^m}^id_t), multiplier of first counterpart
+        	double w_im = -sin(M_PI/m*id_t);      // Im(W_{2^m}^id_t)
+			double w_N_re = cos(M_PI/m*N_thre);   // Re(W_{2^m}^N_thread)
+	        double w_N_im = -sin(M_PI/m*N_thre);  // Im(W_{2^m}^N_thread)
+	        
+			// loop for each output in a group (output no.)
+			for (k=id_t; k<m; k+=N_thre){
+	            // loop for each group (group no.)
+	            for (p=k; p<N; p+=base*m){
+	                // Calculate output of butterfly
+	                // find index of counterpart q
+	                q = p + m;
+	                // apply multiplier of counterpart
+	                // say, multiply W_{2^m}^k on x[q]
+	                temp = x_re[q];
+	                x_re[q] = w_re*x_re[q] - w_im*x_im[q];
+	                x_im[q] = w_re*x_im[q] + w_im*temp;
 	
-	//#pragma omp parallel private(m, k, p, q)
-	//{
-		double w_re, w_im, w_N_re, w_N_im;
-		double temp;   // for temporary storage of number
-		// loop for each steps of butterfly (step no.)
-	    for (m=N_st; m<N_end; m*=2){
-	        // Calculate multiplier of counterpart
-	        w_N_re = cos(M_PI/m);   // Re(W_{2^m}^1)
-	        w_N_im = -sin(M_PI/m);  // Im(W_{2^m}^1)
-	                                // note that there is a minus sign for W_N = e^{-2PI/N}
-	        
-	        #pragma omp parallel private(k,p,q,temp,w_re,w_im)
-	        {
-зя	        	w_re = 1.0D;            // Re(W_{2^m}^0), multiplier of first counterpart
-зя	        	w_im = 0.0D;            // Im(W_{2^m}^0)
-				// loop for each output in a group (output no.)
-				for (k=0; k<m; k++){
-		            // loop for each group (group no.)
-		            for (p=k; p<N; p+=2*m){
-		                // Calculate output of butterfly
-		                // find index of counterpart q
-		                q = p + m;
-		                // apply multiplier of counterpart
-		                // say, multiply W_{2^m}^k on x[q]
-		                temp = x_re[q];
-		                x_re[q] = w_re*x_re[q] - w_im*x_im[q];
-		                x_im[q] = w_re*x_im[q] + w_im*temp;
-		
-		                // apply butterfly structure
-		                // to calculate x_p and x_q (counterpart).
-		                // here we calculate by input multiplied with
-		                // FFT_2_Matrix(multiplier on butterfly)
-		                // ,which is [1 1; 1 -1]
-		                temp = x_re[p];
-		                x_re[p] = x_re[p] + x_re[q];
-		                x_re[q] = temp    - x_re[q];
-		                temp = x_im[p];
-		                x_im[p] = x_im[p] + x_im[q];
-		                x_im[q] = temp    - x_im[q];
-		                
-		            }
-		            //#pragma omp barrier 
-		            // calculate multiplier of next counterpart (with index k)
-		            temp = w_re;
-		            w_re = w_re*w_N_re - w_im*w_N_im;
-		            w_im = temp*w_N_im + w_im*w_N_re;
-		            //printf("id = %d, k= %d, w_re = %f\n", omp_get_thread_num(), k, w_re);
-		        }
-			}
-	        
-		
-	    }
-	//}
+	                // apply butterfly structure
+	                // to calculate x_p and x_q (counterpart).
+	                // here we calculate by input multiplied with
+	                // FFT_2_Matrix(multiplier on butterfly)
+	                // ,which is [1 1; 1 -1]
+	                temp = x_re[p];
+	                x_re[p] = x_re[p] + x_re[q];
+	                x_re[q] = temp    - x_re[q];
+	                temp = x_im[p];
+	                x_im[p] = x_im[p] + x_im[q];
+	                x_im[q] = temp    - x_im[q];
+	            }
+	            // calculate multiplier of next counterpart (with index k)
+	            temp = w_re;
+	            w_re = w_re*w_N_re - w_im*w_N_im;
+	            w_im = temp*w_N_im + w_im*w_N_re;
+	        }
+		}
+    }
 }
 
 

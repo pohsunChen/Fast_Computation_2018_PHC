@@ -12,7 +12,7 @@ int main()
 	clock_t t1, t2;
 	ot1 = omp_get_wtime();
 	
-	#pragma omp parallel num_threads(2) // 把下面的工作平行處理 
+	#pragma omp parallel num_threads(4) // 把下面的工作平行處理 
 	{
 		printf("Hello World A(%d,%d,%f)\n",omp_get_thread_num(),omp_get_num_threads(),omp_get_wtime()-ot1);
 		printf("Hello World B(%d,%d,%f)\n",omp_get_thread_num(),omp_get_num_threads(),omp_get_wtime()-ot1);
@@ -207,5 +207,5 @@ int main()
 	printf("a = %f, b = %f\n", a, b);
 	printf("parallel time:%f\n",(t2-t1)/(double) CLOCKS_PER_SEC);
 	
-	return 0;++
+	return 0;
 }

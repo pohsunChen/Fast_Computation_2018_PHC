@@ -13,7 +13,7 @@ void butterfly2(double *x_re, double *x_im, int N_st, int N_end, int N);
 
 int main(){
     int i;
-    int N = pow(2,1)*pow(3,0)*pow(5,0) + 0.5D;
+    int N = pow(2,0)*pow(3,4)*pow(5,0) + 0.5D;
     double *x_re, *x_im, *y_re, *y_im;
     int N_st, N_end;
     int d_2 = 0;
@@ -51,6 +51,7 @@ int main(){
 
     // bit-reverse
     bit_reverse(x_re, x_im, N);
+    
 	// butterfly 5
     N_st = 1;
     N_end = pow(5,d_5) + 0.5D;
@@ -233,23 +234,22 @@ void butterfly5(double *x_re, double *x_im, int N_st, int N_end, int N){
     // loop for each steps of butterfly (step no.)
     for (m=N_st; m<N_end; m*=base){
         // Calculate multiplier of counterpart
-        w_k_re = 1.0D;              // Re(W_{3^m}^0), multiplier of first counterpart
-        w_k_im = 0.0D;              // Im(W_{3^m}^0)
-        w_2k_re = 1.0D;             // Re(W_{3^2m}^0)
-        w_2k_im = 0.0D;             // Re(W_{3^2m}^0)
-        w_3k_re = 1.0D;             // Re(W_{3^3m}^0)
-        w_3k_im = 0.0D;             // Re(W_{3^3m}^0)
-        w_4k_re = 1.0D;             // Re(W_{3^4m}^0)
-        w_4k_im = 0.0D;             // Re(W_{3^4m}^0)
-        w_N_re =  cos(2.0D*M_PI/(m*base)); // Re(W_{3^m}^1)
-        w_N_im = -sin(2.0D*M_PI/(m*base)); // Im(W_{3^m}^1)
-        								   // note that there is a minus sign for W_N = e^{-2PI/N}
-        w_N_2_re = w_N_re*w_N_re - w_N_im*w_N_im;  		// Re(W_{3^m}^2)
-        w_N_2_im = 2.0D*w_N_re*w_N_im;  				// Im(W_{3^m}^2)
-        w_N_3_re = w_N_2_re*w_N_re - w_N_2_im*w_N_im;   // Re(W_{3^m}^3)
-        w_N_3_im = w_N_2_re*w_N_im + w_N_2_im*w_N_re;  	// Im(W_{3^m}^3)
-        w_N_4_re = w_N_3_re*w_N_re - w_N_3_im*w_N_im;  	// Re(W_{3^m}^4)
-        w_N_4_im = w_N_3_re*w_N_im + w_N_3_im*w_N_re;  	// Im(W_{3^m}^4)
+        w_k_re = 1.0D;              // Re(W_{5^m}^0), multiplier of first counterpart
+        w_k_im = 0.0D;              // Im(W_{5^m}^0)
+        w_2k_re = 1.0D;             // Re(W_{5^m}^0)
+        w_2k_im = 0.0D;             // Re(W_{5^m}^0)
+        w_3k_re = 1.0D;             // Re(W_{5^m}^0)
+        w_3k_im = 0.0D;             // Re(W_{5^m}^0)
+        w_4k_re = 1.0D;             // Re(W_{5^m}^0)
+        w_4k_im = 0.0D;             // Re(W_{5^m}^0)
+        w_N_re =  cos(2.0D*M_PI/(m*base)); // Re(W_{5^m}^1)
+        w_N_im = -sin(2.0D*M_PI/(m*base)); // Im(W_{5^m}^1)
+        w_N_2_re = w_N_re*w_N_re - w_N_im*w_N_im;  		// Re(W_{5^m}^2)
+        w_N_2_im = 2.0D*w_N_re*w_N_im;  				// Im(W_{5^m}^2)
+        w_N_3_re = w_N_2_re*w_N_re - w_N_2_im*w_N_im;   // Re(W_{5^m}^3)
+        w_N_3_im = w_N_2_re*w_N_im + w_N_2_im*w_N_re;  	// Im(W_{5^m}^3)
+        w_N_4_re = w_N_3_re*w_N_re - w_N_3_im*w_N_im;  	// Re(W_{5^m}^4)
+        w_N_4_im = w_N_3_re*w_N_im + w_N_3_im*w_N_re;  	// Im(W_{5^m}^4)
 
         // loop for each output in a group (output no.)
         for (k=0; k<m; k++){
@@ -262,7 +262,7 @@ void butterfly5(double *x_re, double *x_im, int N_st, int N_end, int N){
                 t = s + m;
                 r = t + m;
                 // apply multiplier of counterpart
-                // say, multiply W_{2^m}^k on x[q]
+                // say, multiply W_{3^m}^k on x[q]
                 temp = x_re[q];
                 x_re[q] = w_k_re*x_re[q] - w_k_im*x_im[q];
                 x_im[q] = w_k_re*x_im[q] + w_k_im*temp;
@@ -375,13 +375,13 @@ void butterfly3(double *x_re, double *x_im, int N_st, int N_end, int N){
         // Calculate multiplier of counterpart
         w_k_re = 1.0D;              // Re(W_{3^m}^0), multiplier of first counterpart
         w_k_im = 0.0D;              // Im(W_{3^m}^0)
-        w_2k_re = 1.0D;             // Re(W_{3^2m}^0)
-        w_2k_im = 0.0D;             // Re(W_{3^2m}^0)
+        w_2k_re = 1.0D;             // Re(W_{3^m}^0)
+        w_2k_im = 0.0D;             // Re(W_{3^m}^0)
         w_N_re =  cos(2.0D*M_PI/(m*base)); // Re(W_{3^m}^1)
         w_N_im = -sin(2.0D*M_PI/(m*base)); // Im(W_{3^m}^1)
         w_N_2_re = w_N_re*w_N_re - w_N_im*w_N_im;  // Re(W_{3^m}^2)
         w_N_2_im = 2.0D*w_N_re*w_N_im;  // Im(W_{3^m}^2)
-                                // note that there is a minus sign for W_N = e^{-2PI/N}
+        
         // loop for each output in a group (output no.)
         for (k=0; k<m; k++){
             // loop for each group (group no.)
