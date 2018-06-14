@@ -38,7 +38,6 @@ using namespace std;
 int main(){
 
     Alloc_mem();    // Allocate memory
-    cout << T[8] << endl;
     Init();         // Initialization
     cout << T[8] << endl;
     Point_Solver();
@@ -74,6 +73,7 @@ void Init(){
     // Set top temperature
     for (int i=1; i<Nx; i++)
         T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] - qt*dy;
+    cout << T[45] <<endl;
 }
 
 
