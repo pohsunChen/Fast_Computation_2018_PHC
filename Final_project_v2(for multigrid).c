@@ -21,10 +21,11 @@ void Multigrid_Iter(double *T, double *Src, int N_block);
 void Cal_bc(double *T, int N_block);
 void Save(double *T, int Nx, int Ny, double dx, double dy);
 double Residual(double *Res, double *T, double *Src, int N_block);
+void Cal_bc_e(double *T, int N_block);
 
 int main(){
     /// constant variables
-    int N_block = 2;
+    int N_block = 16;
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -159,7 +160,7 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
 
 
     if (N_block == 2){
-        /*
+        //
         int N_iter = 0;
         int Max_Steps = 1000;
         double r;
@@ -170,11 +171,12 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
         r = Residual(Res, T, Src, N_block);
         while(r>res_cri && N_iter<Max_Steps){
             GaussSeidel_Iter(T, Src, N_block);
-            Cal_bc(T, N_block);
+            Cal_bc_e(T, N_block);
             r = Residual(Res, T, Src, N_block);
             N_iter++;
         }
-        */
+        //
+        /*
         /// Method II
         Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
         en = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
@@ -190,19 +192,60 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
         int N_iter = 0;
         while(N_iter<1000){
             GaussSeidel_Iter(en, Res, N_block);
-            Cal_bc(en, N_block);
+            Cal_bc_e(en, N_block);
             N_iter++;
 //            printf("en = %g\n", en[1+5*(Nx+1)]);
 //            system("pause");
-        }
 
-        for (j=1; j<=Ny; j++){
-            for (i=1; i<Nx; i++){
+        }
+        for (j=0; j<=Ny; j++){
+            for (i=0; i<=Nx; i++){
                 if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
                     T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
                 }
             }
         }
+        */
+        /*
+        /// Method III
+        Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+        en = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+        memset(en, 0.0, (Nx+1)*(Ny+1));
+        memset(Res, 0.0, (Nx+1)*(Ny+1));
+        //memset(T, 0.0, (Nx+1)*(Ny+1));
+        Cal_bc(en, N_block);
+        double r;
+        r = Residual(Res, T, Src, N_block);
+        for (j=0; j<(Ny+1); j++)
+            for (i=0; i<Nx+1; i++)
+                printf("i = %d, j = %d, Res = %g\n", i, j, Res[i+j*(Nx+1)]);
+
+        int N_iter = 0;
+
+        while(r>1E-7 && N_iter<1000){
+            GaussSeidel_Iter(en, Res, N_block);
+            Cal_bc_e(en, N_block);
+            N_iter++;
+//            printf("en = %g\n", en[1+5*(Nx+1)]);
+//            system("pause");
+            for (j=0; j<=Ny; j++){
+                for (i=0; i<=Nx; i++){
+                    if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
+                        T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
+                    }
+                }
+            }
+            r = Residual(Res, T, Src, N_block);
+            printf("N = %d, res_max = %g\n", N_iter, r);
+        }
+        for (j=0; j<=Ny; j++){
+            for (i=0; i<=Nx; i++){
+                if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
+                    T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
+                }
+            }
+        }
+        */
 	}
     else{
         Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
@@ -296,6 +339,72 @@ void Cal_bc(double *T, int N_block){
     // outer bc
     for (i=1; i<Nx; i++)
         T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] - qt*dy;
+//    for (i=0; i<=Nx; i++)
+//        T[i+0*(Nx+1)] = Tb;
+//    for (j=1; j<=Ny; j++)
+//        T[0+j*(Nx+1)] = Tl;
+//    for (j=1; j<=Ny; j++)
+//        T[Nx+j*(Nx+1)] = Tr;
+
+    // bottom inner bc
+    for (i=Nx1; i<=Nx2; i++){
+        j = Ny1;
+        if (i==Nx1){
+            T[i+j*(Nx+1)] = 0.5L*( T[(i-1)+j*(Nx+1)] \
+                                  +T[i+(j-1)*(Nx+1)]);
+        }
+        else if (i==Nx2){
+            T[i+j*(Nx+1)] = 0.5L*( T[(i+1)+j*(Nx+1)] \
+                                  +T[i+(j-1)*(Nx+1)]);
+        }
+        else{
+            T[i+j*(Nx+1)] = T[i+(j-1)*(Nx+1)];
+        }
+    }
+    // top inner bc
+    for (i=Nx1; i<=Nx2; i++){
+        j = Ny2;
+        if (i==Nx1){
+            T[i+j*(Nx+1)] = 0.5L*( T[(i-1)+j*(Nx+1)] \
+                                  +T[i+(j+1)*(Nx+1)]);
+        }
+        else if (i==Nx2){
+            T[i+j*(Nx+1)] = 0.5L*( T[(i+1)+j*(Nx+1)] \
+                                  +T[i+(j+1)*(Nx+1)]);
+        }
+        else{
+            T[i+j*(Nx+1)] = T[i+(j+1)*(Nx+1)];
+        }
+    }
+    // left inner bc
+    for (j=Ny1+1; j<Ny2; j++){
+        i = Nx1;
+        T[i+j*(Nx+1)] = T[(i-1)+j*(Nx+1)];
+    }
+    // right inner bc
+    for (j=Ny1+1; j<Ny2; j++){
+        i = Nx2;
+        T[i+j*(Nx+1)] = T[(i+1)+j*(Nx+1)];
+    }
+}
+
+
+
+/// E_BC (Correction)
+void Cal_bc_e(double *T, int N_block){
+    int Nx1 = N_block;
+    int Nx2 = 2*N_block;
+    int Nx = 3*N_block;
+    int Ny1 = N_block;
+    int Ny2 = 2*N_block;
+    int Ny = 3*N_block;
+    double dx = Lx/Nx;
+    double dy = Ly/Ny;
+    int i, j;
+
+    // outer bc
+    for (i=1; i<Nx; i++)
+        T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)];
 //    for (i=0; i<=Nx; i++)
 //        T[i+0*(Nx+1)] = Tb;
 //    for (j=1; j<=Ny; j++)

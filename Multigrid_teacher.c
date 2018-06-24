@@ -12,7 +12,7 @@ int main()
 	double h, **U, **F, **R, r, r0, r1;
 	time_t t1, t2;
 
-	p = 8;
+	p = 3;
 	N = 1 << p;
 	M = (N-1)*(N-1);
 	printf("N = %d\n",N);

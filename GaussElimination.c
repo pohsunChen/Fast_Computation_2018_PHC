@@ -4,7 +4,7 @@
 void GaussEli(double **A, double *b, double *x, int N);
 
 int main(){
-    int N_block = 2;
+    int N_block = 16;
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -49,7 +49,7 @@ int main(){
             else if (j==Ny){
                 A[i+j*(Nx+1)][i+j*(Nx+1)] = 1.0;
                 A[i+j*(Nx+1)][i+(j-1)*(Nx+1)] = -1.0;
-                b[i+j*(Nx+1)] = -90*dy;
+                b[i+j*(Nx+1)] = -90.0*dy;
             }
             else if (j==Ny1 && i==Nx1){
                 A[i+j*(Nx+1)][i+j*(Nx+1)] = 1.0;
