@@ -10,20 +10,21 @@ double Tb = 100.0;    // Temperature at bottom
 double Tl = 50.0;     // Temperature at left
 double Tr = 75.0;     // Temperature at right
 double qt = 90.0;      // Heat transfer at top
-double src = 0.0L;     // Source term in Poisson eq.
-double err_cri = 1E-6;
-double err_max;        // maximum error in the whole domain
+double res_cri = 1E-6;
+double Max_Steps = 1E5;
 int N_iter;
 
 /// function definition
-void Init(double *T, int Nx, int Ny, double dy);
-void Point_Solver(double *T, int N_block);
+void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy);
+void GaussSeidel_Iter(double *T, double *Src, int N_block);
+void Multigrid_Iter(double *T, double *Src, int N_block);
 void Cal_bc(double *T, int N_block);
 void Save(double *T, int Nx, int Ny, double dx, double dy);
+double Residual(double *Res, double *T, double *Src, int N_block);
 
 int main(){
     /// constant variables
-    int N_block = 64;
+    int N_block = 2;
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -32,16 +33,30 @@ int main(){
     int Ny = 3*N_block;
     double dx = Lx/Nx;
     double dy = Ly/Ny;
-    double *T;             // Temperature
+    double *T, *Src, *Res;
+    double r, r1;
     int i, j;
 
     T = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+    Src = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+    Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
 
+    Init(T, Src, Res, Nx, Ny, dy);        // Initialization
 
-    Init(T, Nx, Ny, dy);        // Initialization
-    Point_Solver(T, N_block);   // Iterative method (Point SOR) to calculate inner point
+    r = Residual(Res, T, Src, N_block);
+
+    while(r>res_cri && N_iter<Max_Steps){
+        //GaussSeidel_Iter(T, Src, N_block);
+        Multigrid_Iter(T, Src, N_block);
+        Cal_bc(T, N_block);
+        r1 = Residual(Res, T, Src, N_block);
+        printf("N_iter = %d, res = %g, ratio = %g\n", N_iter, r1, r1/r);
+        r = r1;
+        N_iter++;
+        system("pause");
+    }
+
     Save(T, Nx, Ny, dx, dy);    // Save data
-
 
     return 0;
 }
@@ -49,7 +64,7 @@ int main(){
 
 
 /// initialization
-void Init(double *T, int Nx, int Ny, double dy){
+void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
     int i, j;
 
     // Set initial guess
@@ -68,12 +83,19 @@ void Init(double *T, int Nx, int Ny, double dy){
     // Set top temperature
     for (i=1; i<Nx; i++)
         T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] - qt*dy;
+
+    // Set source
+    for (j=0; j<=Ny; j++)
+        for (i=0; i<=Nx; i++){
+            Src[i+j*(Nx+1)] = 0.0;
+            Res[i+j*(Nx+1)] = 0.0;
+        }
 }
 
 
 
 /// Iterative method (Point SOR) to calculate inner point
-void Point_Solver(double *T, int N_block){
+void GaussSeidel_Iter(double *T, double *Src, int N_block){
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -83,80 +105,168 @@ void Point_Solver(double *T, int N_block){
     double dx = Lx/Nx;
     double dy = Ly/Ny;
 
-    double *T_new;
-    double Cp = -2.0L*(1.0L/dx/dx + 1.0L/dy/dy);
-    double Ce = 1.0L/dx/dx;
-    double Cw = 1.0L/dx/dx;
-    double Cn = 1.0L/dy/dy;
-    double Cs = 1.0L/dy/dy;
-    double S = src;
-    double err;
+    double Cp = -2.0*(1.0/dx/dx + 1.0/dy/dy);
+    double Ce = 1.0/dx/dx;
+    double Cw = 1.0/dx/dx;
+    double Cn = 1.0/dy/dy;
+    double Cs = 1.0/dy/dy;
     int i, j;
 
-    T_new = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
-
-
-    for (N_iter=0; N_iter<1E6; N_iter++){
-        err_max = 0.0L;
-        for (j=1; j<Ny; j++){
-            // j outside the hole
-            if (j<Ny1 || j>Ny2){
-                for (i=1; i<Nx; i++){
-                    T_new[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
-                                                   -Cw*T[(i-1)+j*(Nx+1)] \
-                                                   -Cn*T[i+(j+1)*(Nx+1)] \
-                                                   -Cs*T[i+(j-1)*(Nx+1)] \
-                                                   +S);
-                    // Calculate err
-                    err = fabs(T_new[i+j*(Nx+1)] - T[i+j*(Nx+1)]);
-                    if (err>err_max)
-                        err_max = err;
-                    // Update new value
-                    T[i+j*(Nx+1)] = T_new[i+j*(Nx+1)];
-                }
+    for (j=1; j<Ny; j++){
+        // j outside the hole
+        if (j<Ny1 || j>Ny2){
+            for (i=1; i<Nx; i++){
+                T[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
+                                           -Cw*T[(i-1)+j*(Nx+1)] \
+                                           -Cn*T[i+(j+1)*(Nx+1)] \
+                                           -Cs*T[i+(j-1)*(Nx+1)] \
+                                           +Src[i+j*(Nx+1)]);
             }
-            // j inside the hole including BC
-            else{
-                for (i=1; i<Nx1; i++){
-                    T_new[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
-                                                   -Cw*T[(i-1)+j*(Nx+1)] \
-                                                   -Cn*T[i+(j+1)*(Nx+1)] \
-                                                   -Cs*T[i+(j-1)*(Nx+1)] \
-                                                   +S);
-                    // Calculate err
-                    err = fabs(T_new[i+j*(Nx+1)] - T[i+j*(Nx+1)]);
-                    if (err>err_max)
-                        err_max = err;
-                    // Update new value
-                    T[i+j*(Nx+1)] = T_new[i+j*(Nx+1)];
-                }
-                for (i=Nx2+1; i<Nx; i++){
-                    T_new[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
-                                                   -Cw*T[(i-1)+j*(Nx+1)] \
-                                                   -Cn*T[i+(j+1)*(Nx+1)] \
-                                                   -Cs*T[i+(j-1)*(Nx+1)] \
-                                                   +S);
-                    // Calculate err
-                    err = fabs(T_new[i+j*(Nx+1)] - T[i+j*(Nx+1)]);
-                    if (err>err_max)
-                        err_max = err;
-                    // Update new value
-                    T[i+j*(Nx+1)] = T_new[i+j*(Nx+1)];
+        }
+        // j inside the hole including BC
+        else{
+            for (i=1; i<Nx1; i++){
+                T[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
+                                           -Cw*T[(i-1)+j*(Nx+1)] \
+                                           -Cn*T[i+(j+1)*(Nx+1)] \
+                                           -Cs*T[i+(j-1)*(Nx+1)] \
+                                           +Src[i+j*(Nx+1)]);
+            }
+            for (i=Nx2+1; i<Nx; i++){
+                T[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
+                                           -Cw*T[(i-1)+j*(Nx+1)] \
+                                           -Cn*T[i+(j+1)*(Nx+1)] \
+                                           -Cs*T[i+(j-1)*(Nx+1)] \
+                                           +Src[i+j*(Nx+1)]);
+            }
+        }
+    }
+}
+
+
+
+/// Multigrid Iteration
+void Multigrid_Iter(double *T, double *Src, int N_block){
+    int Nx1 = N_block;
+    int Nx2 = 2*N_block;
+    int Nx = 3*N_block;
+    int Ny1 = N_block;
+    int Ny2 = 2*N_block;
+    int Ny = 3*N_block;
+
+    double *Res, *en, *rn;
+    int i, j;
+
+
+    if (N_block == 2){
+        /*
+        int N_iter = 0;
+        int Max_Steps = 1000;
+        double r;
+        double res_cre = 1E-6;
+
+        Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+        r = 0.0;
+        r = Residual(Res, T, Src, N_block);
+        while(r>res_cri && N_iter<Max_Steps){
+            GaussSeidel_Iter(T, Src, N_block);
+            Cal_bc(T, N_block);
+            r = Residual(Res, T, Src, N_block);
+            N_iter++;
+        }
+        */
+        /// Method II
+        Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+        en = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+        memset(en, 0.0, (Nx+1)*(Ny+1));
+        Residual(Res, T, Src, N_block);
+
+        while(N_iter<1000){
+            GaussSeidel_Iter(en, Res, N_block);
+            Cal_bc(en, N_block);
+            N_iter++;
+        }
+        for (j=0; j<=Ny; j++){
+            for (i=0; i<=Nx; i++){
+                if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
+                    T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
                 }
             }
         }
-        /// Calculate new boundary values
-        Cal_bc(T, N_block);
+	}
+    else{
+        Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
+        en = (double*) malloc((Nx/2+1)*(Ny/2+1)*sizeof(double));
+        rn = (double*) malloc((Nx/2+1)*(Ny/2+1)*sizeof(double));
+        memset(Res, 0.0, (Nx+1)*(Ny+1));
+        memset(en, 0.0, (Nx/2+1)*(Ny/2+1));
+        memset(rn, 0.0, (Nx/2+1)*(Ny/2+1));
 
-        /// Show iteration status
-        printf("N_iter = %d, err_max = %g \n", N_iter, err_max);
-
-        /// Consider if breaking the loop
-        if (err_max<err_cri)
-            break;
+        // Smoother
+        for (i=0; i<4; i++){
+            GaussSeidel_Iter(T, Src, N_block);
+            Cal_bc(T, N_block);
+        }
+        Residual(Res, T, Src, N_block);
+        // Projection: project the residue to next grid
+        for (j=0; j<=Ny/2; j++){
+            for (i=0; i<=Nx/2; i++){
+                if (i<=Nx1/2 || i>=Nx2/2 || j<=Ny1/2 || j>=Ny2/2){
+                    en[i+j*(Nx/2+1)] = 0.0;
+                    rn[i+j*(Nx/2+1)] = Res[(i*2)+(j*2)*(Nx+1)];
+                }
+            }
+        }
+        // Calculate residue in next grid
+        Multigrid_Iter(en, rn, N_block/2);
+        // Interpolation
+        for (j=0; j<=Ny; j++){
+            for (i=0; i<=Nx; i++){
+                if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
+                    /// We don't want to create new array for En
+                    /// Here Res functions as En
+                    if (i%2==0 && j%2==0){
+                        Res[i+j*(Nx+1)] = 0.0;  // Empty the Res
+                        Res[i+j*(Nx+1)] = en[(i/2)+(j/2)*(Nx/2+1)];
+                    }
+                    else if (i%2==1 && j%2==0){
+                        Res[i+j*(Nx+1)] = 0.0;  // Empty the Res
+                        Res[i+j*(Nx+1)] = 0.5*en[((i-1)/2)+(j/2)*(Nx/2+1)] \
+                                         +0.5*en[((i+1)/2)+(j/2)*(Nx/2+1)];
+                    }
+                    else if (i%2==0 && j%2==1){
+                        Res[i+j*(Nx+1)] = 0.0;  // Empty the Res
+                        Res[i+j*(Nx+1)] = 0.5*en[(i/2)+((j-1)/2)*(Nx/2+1)] \
+                                         +0.5*en[(i/2)+((j+1)/2)*(Nx/2+1)];
+                    }
+                    else if (i%2==1 && j%2==1){
+                        Res[i+j*(Nx+1)] = 0.0;  // Empty the Res
+                        Res[i+j*(Nx+1)] = 0.25*en[((i-1)/2)+((j-1)/2)*(Nx/2+1)] \
+                                         +0.25*en[((i-1)/2)+((j+1)/2)*(Nx/2+1)] \
+                                         +0.25*en[((i+1)/2)+((j-1)/2)*(Nx/2+1)] \
+                                         +0.25*en[((i+1)/2)+((j+1)/2)*(Nx/2+1)];
+                    }
+                    else{
+                        printf("Wrong!\n");
+                    }
+                }
+            }
+        }
+        for (j=0; j<=Ny; j++){
+            for (i=0; i<=Nx; i++){
+                if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
+                    /// We don't want to create new array for En
+                    /// Here Res functions as En
+                    /// T adding the correction En
+                    T[i+j*(Nx+1)] += Res[i+j*(Nx+1)];
+                }
+            }
+        }
+        //GaussSeidel_Iter(T, Src, N_block);
+        free(Res);
+        free(en);
+        free(rn);
     }
-
-    free(T_new);
 }
 
 
@@ -240,4 +350,94 @@ void Save(double *T, int Nx, int Ny, double dx, double dy){
         }
     }
     fclose(pFile);
+}
+
+
+
+/// Gauss Elimination
+void GaussEli(double **A, double *b, double *x, int N){
+    int i, j, k, m;
+
+    double temp = 0.0;
+    /// Foreward elimination
+    for(i=0; i<N-1; i++) {
+        for(j=i+1; j<N; j++) {
+            temp = A[j][i]/A[i][i];
+            b[j] = b[j] - temp*b[i];
+            for(k=i; k<N; k++) {
+                A[j][k] = A[j][k] - temp*A[i][k];
+            }
+        }
+    }
+    /// Backward substitution
+    double sum = 0.0;
+    for(i=N-1; i>=0; i--) {
+        sum = 0.0L;
+        for(m=i+1; m<N; m++) {
+            sum = sum + A[i][m]*x[m];
+        }
+        x[i] = (b[i]-sum)/A[i][i];
+    }
+}
+
+
+
+double Residual(double *Res, double *T, double *Src, int N_block){
+    int Nx1 = N_block;
+    int Nx2 = 2*N_block;
+    int Nx = 3*N_block;
+    int Ny1 = N_block;
+    int Ny2 = 2*N_block;
+    int Ny = 3*N_block;
+    double dx = Lx/Nx;
+    double dy = Ly/Ny;
+
+    double Cp = -2.0L*(1.0L/dx/dx + 1.0L/dy/dy);
+    double Ce = 1.0L/dx/dx;
+    double Cw = 1.0L/dx/dx;
+    double Cn = 1.0L/dy/dy;
+    double Cs = 1.0L/dy/dy;
+    double res_max = 0.0;
+    int i, j;
+
+    for (j=1; j<Ny; j++){
+        // j outside the hole
+        if (j<Ny1 || j>Ny2){
+            for (i=1; i<Nx; i++){
+                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)]
+                                 -Cp*T[i+j*(Nx+1)] \
+                                 -Ce*T[(i+1)+j*(Nx+1)] \
+                                 -Cw*T[(i-1)+j*(Nx+1)] \
+                                 -Cn*T[i+(j+1)*(Nx+1)] \
+                                 -Cs*T[i+(j-1)*(Nx+1)];
+                if (fabs(Res[i+j*(Nx+1)]) > res_max)
+                    res_max = fabs(Res[i+j*(Nx+1)]);
+            }
+        }
+        // j inside the hole including BC
+        else{
+            for (i=1; i<Nx1; i++){
+                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)]
+                                 -Cp*T[i+j*(Nx+1)] \
+                                 -Ce*T[(i+1)+j*(Nx+1)] \
+                                 -Cw*T[(i-1)+j*(Nx+1)] \
+                                 -Cn*T[i+(j+1)*(Nx+1)] \
+                                 -Cs*T[i+(j-1)*(Nx+1)];
+                if (fabs(Res[i+j*(Nx+1)]) > res_max)
+                    res_max = fabs(Res[i+j*(Nx+1)]);
+            }
+            for (i=Nx2+1; i<Nx; i++){
+                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)]
+                                 -Cp*T[i+j*(Nx+1)] \
+                                 -Ce*T[(i+1)+j*(Nx+1)] \
+                                 -Cw*T[(i-1)+j*(Nx+1)] \
+                                 -Cn*T[i+(j+1)*(Nx+1)] \
+                                 -Cs*T[i+(j-1)*(Nx+1)];
+                if (fabs(Res[i+j*(Nx+1)]) > res_max)
+                    res_max = fabs(Res[i+j*(Nx+1)]);
+            }
+        }
+    }
+
+    return res_max;
 }
