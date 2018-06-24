@@ -11,8 +11,8 @@ double Tl = 50.0;     // Temperature at left
 double Tr = 75.0;     // Temperature at right
 double qt = 90.0;      // Heat transfer at top
 double res_cri = 1E-6;
-double Max_Steps = 1E5;
-int N_iter;
+double Max_Steps = 1E3;
+
 
 /// function definition
 void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy);
@@ -44,7 +44,7 @@ int main(){
     Init(T, Src, Res, Nx, Ny, dy);        // Initialization
 
     r = Residual(Res, T, Src, N_block);
-
+    int N_iter=0;
     while(r>res_cri && N_iter<Max_Steps){
         //GaussSeidel_Iter(T, Src, N_block);
         Multigrid_Iter(T, Src, N_block);
@@ -53,7 +53,7 @@ int main(){
         printf("N_iter = %d, res = %g, ratio = %g\n", N_iter, r1, r1/r);
         r = r1;
         N_iter++;
-        system("pause");
+        //system("pause");
     }
 
     Save(T, Nx, Ny, dx, dy);    // Save data
@@ -179,15 +179,25 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
         Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
         en = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
         memset(en, 0.0, (Nx+1)*(Ny+1));
+        memset(Res, 0.0, (Nx+1)*(Ny+1));
+        //memset(T, 0.0, (Nx+1)*(Ny+1));
+        Cal_bc(en, N_block);
         Residual(Res, T, Src, N_block);
-
+        for (j=0; j<(Ny+1); j++)
+            for (i=0; i<Nx+1; i++)
+                printf("i = %d, j = %d, Res = %g\n", i, j, Res[i+j*(Nx+1)]);
+        system("pause");
+        int N_iter = 0;
         while(N_iter<1000){
             GaussSeidel_Iter(en, Res, N_block);
             Cal_bc(en, N_block);
             N_iter++;
+//            printf("en = %g\n", en[1+5*(Nx+1)]);
+//            system("pause");
         }
-        for (j=0; j<=Ny; j++){
-            for (i=0; i<=Nx; i++){
+
+        for (j=1; j<=Ny; j++){
+            for (i=1; i<Nx; i++){
                 if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
                     T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
                 }
@@ -283,9 +293,15 @@ void Cal_bc(double *T, int N_block){
     double dy = Ly/Ny;
     int i, j;
 
-    // Top outer bc
+    // outer bc
     for (i=1; i<Nx; i++)
         T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] - qt*dy;
+//    for (i=0; i<=Nx; i++)
+//        T[i+0*(Nx+1)] = Tb;
+//    for (j=1; j<=Ny; j++)
+//        T[0+j*(Nx+1)] = Tl;
+//    for (j=1; j<=Ny; j++)
+//        T[Nx+j*(Nx+1)] = Tr;
 
     // bottom inner bc
     for (i=Nx1; i<=Nx2; i++){
@@ -404,7 +420,7 @@ double Residual(double *Res, double *T, double *Src, int N_block){
         // j outside the hole
         if (j<Ny1 || j>Ny2){
             for (i=1; i<Nx; i++){
-                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)]
+                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)] \
                                  -Cp*T[i+j*(Nx+1)] \
                                  -Ce*T[(i+1)+j*(Nx+1)] \
                                  -Cw*T[(i-1)+j*(Nx+1)] \
@@ -417,7 +433,7 @@ double Residual(double *Res, double *T, double *Src, int N_block){
         // j inside the hole including BC
         else{
             for (i=1; i<Nx1; i++){
-                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)]
+                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)] \
                                  -Cp*T[i+j*(Nx+1)] \
                                  -Ce*T[(i+1)+j*(Nx+1)] \
                                  -Cw*T[(i-1)+j*(Nx+1)] \
@@ -427,7 +443,7 @@ double Residual(double *Res, double *T, double *Src, int N_block){
                     res_max = fabs(Res[i+j*(Nx+1)]);
             }
             for (i=Nx2+1; i<Nx; i++){
-                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)]
+                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)] \
                                  -Cp*T[i+j*(Nx+1)] \
                                  -Ce*T[(i+1)+j*(Nx+1)] \
                                  -Cw*T[(i-1)+j*(Nx+1)] \

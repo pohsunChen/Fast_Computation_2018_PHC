@@ -4,7 +4,7 @@
 #include <time.h>
 
 
-#define N_block 64
+#define N_block 16
 #define Nx1 N_block
 #define Nx2 (2*N_block)
 #define Nx (3*N_block)

@@ -161,7 +161,7 @@ int Multigrid_Iteration(double **U, double **F, int N)
 		for(i=1;i<N/2-1;++i) Fn[i] = Fn[i-1] + (N/2-1);
 
 		//Jacobi_Iteration(U,F,N);
-		for (i=0; i<4; i++) GaussSeidel_Iteration(U,F,N);
+		GaussSeidel_Iteration(U,F,N);
 		r = Residual(R,U,F,N);
 		for(i=0;i<N/2-1;++i)
 		{
