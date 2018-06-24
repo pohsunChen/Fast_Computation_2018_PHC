@@ -9,19 +9,20 @@ double Ly = 1.0;
 double Tb = 100.0;    // Temperature at bottom
 double Tl = 50.0;     // Temperature at left
 double Tr = 75.0;     // Temperature at right
-double qt = 0.0;      // Heat transfer at top
+double qt = 90.0;      // Heat transfer at top
 double res_cri = 1E-6;
-double Max_Steps = 1E3;
+double Max_Steps = 1E5;
 
 
 /// function definition
 void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy);
 void GaussSeidel_Iter(double *T, double *Src, int N_block);
 void Multigrid_Iter(double *T, double *Src, int N_block);
-void Cal_bc(double *T, int N_block);
+void Cal_bc(double *T, double *Src, int N_block);
 void Save(double *T, int Nx, int Ny, double dx, double dy);
 double Residual(double *Res, double *T, double *Src, int N_block);
 void Cal_bc_e(double *T, int N_block);
+void Set_Zero(double *array, int size);
 
 int main(){
     /// constant variables
@@ -47,9 +48,8 @@ int main(){
     r = Residual(Res, T, Src, N_block);
     int N_iter=0;
     while(r>res_cri && N_iter<Max_Steps){
-        //GaussSeidel_Iter(T, Src, N_block);
         Multigrid_Iter(T, Src, N_block);
-        Cal_bc(T, N_block);
+        //GaussSeidel_Iter(T, Src, N_block);
         r1 = Residual(Res, T, Src, N_block);
         printf("N_iter = %d, res = %g, ratio = %g\n", N_iter, r1, r1/r);
         r = r1;
@@ -82,8 +82,6 @@ void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
     for (j=1; j<=Ny; j++)
         T[Nx+j*(Nx+1)] = Tr;
     // Set top temperature
-    for (i=1; i<Nx; i++)
-        T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] - qt*dy;
 
     // Set source
     for (j=0; j<=Ny; j++)
@@ -91,6 +89,8 @@ void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
             Src[i+j*(Nx+1)] = 0.0;
             Res[i+j*(Nx+1)] = 0.0;
         }
+    for (i=1; i<Nx; i++)
+        Src[i+Ny*(Nx+1)] = -qt*dy;
 }
 
 
@@ -124,7 +124,6 @@ void GaussSeidel_Iter(double *T, double *Src, int N_block){
                                            +Src[i+j*(Nx+1)]);
             }
         }
-        // j inside the hole including BC
         else{
             for (i=1; i<Nx1; i++){
                 T[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
@@ -142,6 +141,7 @@ void GaussSeidel_Iter(double *T, double *Src, int N_block){
             }
         }
     }
+    Cal_bc(T, Src, N_block);
 }
 
 
@@ -160,7 +160,6 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
 
 
     if (N_block == 2){
-        //
         int N_iter = 0;
         int Max_Steps = 1000;
         double r;
@@ -171,96 +170,26 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
         r = Residual(Res, T, Src, N_block);
         while(r>res_cri && N_iter<Max_Steps){
             GaussSeidel_Iter(T, Src, N_block);
-            Cal_bc_e(T, N_block);
             r = Residual(Res, T, Src, N_block);
             N_iter++;
         }
-        //
-        /*
-        /// Method II
-        Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
-        en = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
-        memset(en, 0.0, (Nx+1)*(Ny+1));
-        memset(Res, 0.0, (Nx+1)*(Ny+1));
-        //memset(T, 0.0, (Nx+1)*(Ny+1));
-        Cal_bc(en, N_block);
-        Residual(Res, T, Src, N_block);
-        for (j=0; j<(Ny+1); j++)
-            for (i=0; i<Nx+1; i++)
-                printf("i = %d, j = %d, Res = %g\n", i, j, Res[i+j*(Nx+1)]);
-        system("pause");
-        int N_iter = 0;
-        while(N_iter<1000){
-            GaussSeidel_Iter(en, Res, N_block);
-            Cal_bc_e(en, N_block);
-            N_iter++;
-//            printf("en = %g\n", en[1+5*(Nx+1)]);
-//            system("pause");
-
-        }
-        for (j=0; j<=Ny; j++){
-            for (i=0; i<=Nx; i++){
-                if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
-                    T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
-                }
-            }
-        }
-        */
-        /*
-        /// Method III
-        Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
-        en = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
-        memset(en, 0.0, (Nx+1)*(Ny+1));
-        memset(Res, 0.0, (Nx+1)*(Ny+1));
-        //memset(T, 0.0, (Nx+1)*(Ny+1));
-        Cal_bc(en, N_block);
-        double r;
-        r = Residual(Res, T, Src, N_block);
-        for (j=0; j<(Ny+1); j++)
-            for (i=0; i<Nx+1; i++)
-                printf("i = %d, j = %d, Res = %g\n", i, j, Res[i+j*(Nx+1)]);
-
-        int N_iter = 0;
-
-        while(r>1E-7 && N_iter<1000){
-            GaussSeidel_Iter(en, Res, N_block);
-            Cal_bc_e(en, N_block);
-            N_iter++;
-//            printf("en = %g\n", en[1+5*(Nx+1)]);
-//            system("pause");
-            for (j=0; j<=Ny; j++){
-                for (i=0; i<=Nx; i++){
-                    if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
-                        T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
-                    }
-                }
-            }
-            r = Residual(Res, T, Src, N_block);
-            printf("N = %d, res_max = %g\n", N_iter, r);
-        }
-        for (j=0; j<=Ny; j++){
-            for (i=0; i<=Nx; i++){
-                if (i<=Nx1 || i>=Nx2 || j<=Ny1 || j>=Ny2){
-                    T[i+j*(Nx+1)] += en[i+j*(Nx+1)];
-                }
-            }
-        }
-        */
 	}
     else{
         Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
         en = (double*) malloc((Nx/2+1)*(Ny/2+1)*sizeof(double));
         rn = (double*) malloc((Nx/2+1)*(Ny/2+1)*sizeof(double));
-        memset(Res, 0.0, (Nx+1)*(Ny+1));
-        memset(en, 0.0, (Nx/2+1)*(Ny/2+1));
-        memset(rn, 0.0, (Nx/2+1)*(Ny/2+1));
-
+        Set_Zero(Res, (Nx+1)*(Ny+1));
+        Set_Zero(en, (Nx/2+1)*(Ny/2+1));
+        Set_Zero(rn, (Nx/2+1)*(Ny/2+1));
+        for (j=0; j<=Ny; j++)
+            for (i=0; i<=Nx; i++)
+                Res[i+j*(Nx+1)] = 0.0;
         // Smoother
         for (i=0; i<4; i++){
             GaussSeidel_Iter(T, Src, N_block);
-            Cal_bc(T, N_block);
         }
         Residual(Res, T, Src, N_block);
+
         // Projection: project the residue to next grid
         for (j=0; j<=Ny/2; j++){
             for (i=0; i<=Nx/2; i++){
@@ -315,7 +244,9 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
                 }
             }
         }
-        //GaussSeidel_Iter(T, Src, N_block);
+        for (i=0; i<10; i++){
+            //GaussSeidel_Iter(T, Src, N_block);
+        }
         free(Res);
         free(en);
         free(rn);
@@ -325,7 +256,7 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
 
 
 /// Calculate new boundary values
-void Cal_bc(double *T, int N_block){
+void Cal_bc(double *T, double *Src, int N_block){
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -338,7 +269,7 @@ void Cal_bc(double *T, int N_block){
 
     // outer bc
     for (i=1; i<Nx; i++)
-        T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] - qt*dy;
+        T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] + Src[i+Ny*(Nx+1)];
 //    for (i=0; i<=Nx; i++)
 //        T[i+0*(Nx+1)] = Tb;
 //    for (j=1; j<=Ny; j++)
@@ -565,4 +496,13 @@ double Residual(double *Res, double *T, double *Src, int N_block){
     }
 
     return res_max;
+}
+
+
+
+/// Set zeros
+void Set_Zero(double *array, int size){
+    int i;
+    for (i=0; i<size; i++)
+        array[i] = 0.0;
 }

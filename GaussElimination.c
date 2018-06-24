@@ -4,7 +4,7 @@
 void GaussEli(double **A, double *b, double *x, int N);
 
 int main(){
-    int N_block = 16;
+    int N_block = 8;
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
