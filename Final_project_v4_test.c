@@ -8,14 +8,15 @@ double Lx = 1.0;
 double Ly = 1.0;
 double Tb = 100.0;    // Temperature at bottom
 double Tl = 50.0;     // Temperature at left
-double Tr = 75.0;     // Temperature at right
+double Tr = 50.0;     // Temperature at right
+double Ti = 75.0;
 double qt = 90.0;      // Heat transfer at top
 double res_cri = 1E-6;
 double Max_Steps = 1E7;
 
 
 /// function definition
-void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy);
+void Init(double *T, double *Src, double *Res, int N_block);
 void GaussSeidel_Iter(double *T, double *Src, int N_block);
 void Multigrid_Iter(double *T, double *Src, int N_block);
 void Cal_bc(double *T, double *Src, int N_block);
@@ -26,7 +27,7 @@ void Set_Zero(double *array, int size);
 
 int main(){
     /// constant variables
-    int N_block = 128;
+    int N_block = 32;
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -43,13 +44,13 @@ int main(){
     Src = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
     Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
 
-    Init(T, Src, Res, Nx, Ny, dy);        // Initialization
+    Init(T, Src, Res, N_block);        // Initialization
 
     r = Residual(Res, T, Src, N_block);
     int N_iter=0;
     while(r>res_cri && N_iter<Max_Steps){
-        Multigrid_Iter(T, Src, N_block);
-        //GaussSeidel_Iter(T, Src, N_block);
+        //Multigrid_Iter(T, Src, N_block);
+        GaussSeidel_Iter(T, Src, N_block);
         r1 = Residual(Res, T, Src, N_block);
         printf("N_iter = %d, res = %g, ratio = %g\n", N_iter, r1, r1/r);
         r = r1;
@@ -65,7 +66,15 @@ int main(){
 
 
 /// initialization
-void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
+void Init(double *T, double *Src, double *Res, int N_block){
+    int Nx1 = N_block;
+    int Nx2 = 2*N_block;
+    int Nx = 3*N_block;
+    int Ny1 = N_block;
+    int Ny2 = 2*N_block;
+    int Ny = 3*N_block;
+    double dx = Lx/Nx;
+    double dy = Ly/Ny;
     int i, j;
 
     // Set initial guess
@@ -81,7 +90,15 @@ void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
     // Set right temperature
     for (j=1; j<=Ny; j++)
         T[Nx+j*(Nx+1)] = Tr;
-    // Set top temperature
+    // Set inner temperature
+    for (j=Ny1; j<=Ny2; j++)
+        T[Nx1+j*(Nx+1)] = Ti;
+    for (j=Ny1; j<=Ny2; j++)
+        T[Nx2+j*(Nx+1)] = Ti;
+    for (i=Nx1; i<=Nx2; i++)
+        T[i+Ny1*(Nx+1)] = Ti;
+    for (i=Nx1; i<=Nx2; i++)
+        T[i+Ny2*(Nx+1)] = Ti;
 
     // Set source
     for (j=0; j<=Ny; j++)
@@ -282,7 +299,7 @@ void Cal_bc(double *T, double *Src, int N_block){
 //    for (j=1; j<=Ny; j++)
 //        T[Nx+j*(Nx+1)] = Tr;
 
-    // bottom inner bc
+    /* bottom inner bc
     for (i=Nx1; i<=Nx2; i++){
         j = Ny1;
         if (i==Nx1){
@@ -297,7 +314,7 @@ void Cal_bc(double *T, double *Src, int N_block){
             T[i+j*(Nx+1)] = T[i+(j-1)*(Nx+1)];
         }
     }
-    // top inner bc
+    / top inner bc
     for (i=Nx1; i<=Nx2; i++){
         j = Ny2;
         if (i==Nx1){
@@ -322,6 +339,7 @@ void Cal_bc(double *T, double *Src, int N_block){
         i = Nx2;
         T[i+j*(Nx+1)] = T[(i+1)+j*(Nx+1)];
     }
+    */
 }
 
 

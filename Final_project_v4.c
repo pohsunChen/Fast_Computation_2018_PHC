@@ -8,25 +8,25 @@ double Lx = 1.0;
 double Ly = 1.0;
 double Tb = 100.0;    // Temperature at bottom
 double Tl = 50.0;     // Temperature at left
-double Tr = 75.0;     // Temperature at right
-double qt = 90.0;      // Heat transfer at top
+double Tr = 50.0;     // Temperature at right
+double Ti = 75.0;     // Inner temperature
+double qt = 90.0;     // Heat transfer at top
 double res_cri = 1E-6;
 double Max_Steps = 1E7;
 
 
 /// function definition
-void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy);
+void Init(double *T, double *Src, double *Res, int N_block);
 void GaussSeidel_Iter(double *T, double *Src, int N_block);
 void Multigrid_Iter(double *T, double *Src, int N_block);
-void Cal_bc(double *T, double *Src, int N_block);
+void Cal_bc(double *T, int N_block);
 void Save(double *T, int Nx, int Ny, double dx, double dy);
 double Residual(double *Res, double *T, double *Src, int N_block);
-void Cal_bc_e(double *T, int N_block);
 void Set_Zero(double *array, int size);
 
 int main(){
     /// constant variables
-    int N_block = 128;
+    int N_block = 32;
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -43,19 +43,20 @@ int main(){
     Src = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
     Res = (double*) malloc((Nx+1)*(Ny+1)*sizeof(double));
 
-    Init(T, Src, Res, Nx, Ny, dy);        // Initialization
+    Init(T, Src, Res, N_block);        // Initialization
 
     r = Residual(Res, T, Src, N_block);
     int N_iter=0;
     while(r>res_cri && N_iter<Max_Steps){
-        Multigrid_Iter(T, Src, N_block);
-        //GaussSeidel_Iter(T, Src, N_block);
+        //Multigrid_Iter(T, Src, N_block);
+        GaussSeidel_Iter(T, Src, N_block);
         r1 = Residual(Res, T, Src, N_block);
         printf("N_iter = %d, res = %g, ratio = %g\n", N_iter, r1, r1/r);
         r = r1;
         N_iter++;
         //system("pause");
     }
+    Cal_bc(T, N_block);
     printf("N_block = %d, unknowns = %d\n", N_block, (Nx+1)*(Ny+1));
     Save(T, Nx, Ny, dx, dy);    // Save data
 
@@ -65,7 +66,15 @@ int main(){
 
 
 /// initialization
-void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
+void Init(double *T, double *Src, double *Res, int N_block){
+    int Nx1 = N_block;
+    int Nx2 = 2*N_block;
+    int Nx = 3*N_block;
+    int Ny1 = N_block;
+    int Ny2 = 2*N_block;
+    int Ny = 3*N_block;
+    double dx = Lx/Nx;
+    double dy = Ly/Ny;
     int i, j;
 
     // Set initial guess
@@ -81,7 +90,15 @@ void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
     // Set right temperature
     for (j=1; j<=Ny; j++)
         T[Nx+j*(Nx+1)] = Tr;
-    // Set top temperature
+    // Set inner temperature
+    for (j=Ny1; j<=Ny2; j++)
+        T[Nx1+j*(Nx+1)] = Ti;
+    for (j=Ny1; j<=Ny2; j++)
+        T[Nx2+j*(Nx+1)] = Ti;
+    for (i=Nx1; i<=Nx2; i++)
+        T[i+Ny1*(Nx+1)] = Ti;
+    for (i=Nx1; i<=Nx2; i++)
+        T[i+Ny2*(Nx+1)] = Ti;
 
     // Set source
     for (j=0; j<=Ny; j++)
@@ -90,7 +107,7 @@ void Init(double *T, double *Src, double *Res, int Nx, int Ny, double dy){
             Res[i+j*(Nx+1)] = 0.0;
         }
     for (i=1; i<Nx; i++)
-        Src[i+Ny*(Nx+1)] = -qt*dy;
+        Src[i+(Ny-1)*(Nx+1)] += qt/dy;
 }
 
 
@@ -115,7 +132,15 @@ void GaussSeidel_Iter(double *T, double *Src, int N_block){
 
     for (j=1; j<Ny; j++){
         // j outside the hole
-        if (j<Ny1 || j>Ny2){
+        if (j==Ny-1){
+            for (i=1; i<Nx; i++){
+                T[i+j*(Nx+1)] = (1.0/(Cp+Cn))*(-Ce*T[(i+1)+j*(Nx+1)] \
+                                               -Cw*T[(i-1)+j*(Nx+1)] \
+                                               -Cs*T[i+(j-1)*(Nx+1)] \
+                                               +Src[i+j*(Nx+1)]);
+            }
+        }
+        else if (j<Ny1 || j>Ny2){
             for (i=1; i<Nx; i++){
                 T[i+j*(Nx+1)] = (1.0L/Cp)*(-Ce*T[(i+1)+j*(Nx+1)] \
                                            -Cw*T[(i-1)+j*(Nx+1)] \
@@ -141,7 +166,6 @@ void GaussSeidel_Iter(double *T, double *Src, int N_block){
             }
         }
     }
-    Cal_bc(T, Src, N_block);
 }
 
 
@@ -261,7 +285,7 @@ void Multigrid_Iter(double *T, double *Src, int N_block){
 
 
 /// Calculate new boundary values
-void Cal_bc(double *T, double *Src, int N_block){
+void Cal_bc(double *T, int N_block){
     int Nx1 = N_block;
     int Nx2 = 2*N_block;
     int Nx = 3*N_block;
@@ -274,120 +298,7 @@ void Cal_bc(double *T, double *Src, int N_block){
 
     // outer bc
     for (i=1; i<Nx; i++)
-        T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] + Src[i+Ny*(Nx+1)];
-//    for (i=0; i<=Nx; i++)
-//        T[i+0*(Nx+1)] = Tb;
-//    for (j=1; j<=Ny; j++)
-//        T[0+j*(Nx+1)] = Tl;
-//    for (j=1; j<=Ny; j++)
-//        T[Nx+j*(Nx+1)] = Tr;
-
-    // bottom inner bc
-    for (i=Nx1; i<=Nx2; i++){
-        j = Ny1;
-        if (i==Nx1){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i-1)+j*(Nx+1)] \
-                                  +T[i+(j-1)*(Nx+1)]);
-        }
-        else if (i==Nx2){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i+1)+j*(Nx+1)] \
-                                  +T[i+(j-1)*(Nx+1)]);
-        }
-        else{
-            T[i+j*(Nx+1)] = T[i+(j-1)*(Nx+1)];
-        }
-    }
-    // top inner bc
-    for (i=Nx1; i<=Nx2; i++){
-        j = Ny2;
-        if (i==Nx1){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i-1)+j*(Nx+1)] \
-                                  +T[i+(j+1)*(Nx+1)]);
-        }
-        else if (i==Nx2){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i+1)+j*(Nx+1)] \
-                                  +T[i+(j+1)*(Nx+1)]);
-        }
-        else{
-            T[i+j*(Nx+1)] = T[i+(j+1)*(Nx+1)];
-        }
-    }
-    // left inner bc
-    for (j=Ny1+1; j<Ny2; j++){
-        i = Nx1;
-        T[i+j*(Nx+1)] = T[(i-1)+j*(Nx+1)];
-    }
-    // right inner bc
-    for (j=Ny1+1; j<Ny2; j++){
-        i = Nx2;
-        T[i+j*(Nx+1)] = T[(i+1)+j*(Nx+1)];
-    }
-}
-
-
-
-/// E_BC (Correction)
-void Cal_bc_e(double *T, int N_block){
-    int Nx1 = N_block;
-    int Nx2 = 2*N_block;
-    int Nx = 3*N_block;
-    int Ny1 = N_block;
-    int Ny2 = 2*N_block;
-    int Ny = 3*N_block;
-    double dx = Lx/Nx;
-    double dy = Ly/Ny;
-    int i, j;
-
-    // outer bc
-    for (i=1; i<Nx; i++)
-        T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)];
-//    for (i=0; i<=Nx; i++)
-//        T[i+0*(Nx+1)] = Tb;
-//    for (j=1; j<=Ny; j++)
-//        T[0+j*(Nx+1)] = Tl;
-//    for (j=1; j<=Ny; j++)
-//        T[Nx+j*(Nx+1)] = Tr;
-
-    // bottom inner bc
-    for (i=Nx1; i<=Nx2; i++){
-        j = Ny1;
-        if (i==Nx1){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i-1)+j*(Nx+1)] \
-                                  +T[i+(j-1)*(Nx+1)]);
-        }
-        else if (i==Nx2){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i+1)+j*(Nx+1)] \
-                                  +T[i+(j-1)*(Nx+1)]);
-        }
-        else{
-            T[i+j*(Nx+1)] = T[i+(j-1)*(Nx+1)];
-        }
-    }
-    // top inner bc
-    for (i=Nx1; i<=Nx2; i++){
-        j = Ny2;
-        if (i==Nx1){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i-1)+j*(Nx+1)] \
-                                  +T[i+(j+1)*(Nx+1)]);
-        }
-        else if (i==Nx2){
-            T[i+j*(Nx+1)] = 0.5L*( T[(i+1)+j*(Nx+1)] \
-                                  +T[i+(j+1)*(Nx+1)]);
-        }
-        else{
-            T[i+j*(Nx+1)] = T[i+(j+1)*(Nx+1)];
-        }
-    }
-    // left inner bc
-    for (j=Ny1+1; j<Ny2; j++){
-        i = Nx1;
-        T[i+j*(Nx+1)] = T[(i-1)+j*(Nx+1)];
-    }
-    // right inner bc
-    for (j=Ny1+1; j<Ny2; j++){
-        i = Nx2;
-        T[i+j*(Nx+1)] = T[(i+1)+j*(Nx+1)];
-    }
+        T[i+Ny*(Nx+1)] = T[i+(Ny-1)*(Nx+1)] - qt*dy;
 }
 
 
@@ -463,7 +374,18 @@ double Residual(double *Res, double *T, double *Src, int N_block){
 
     for (j=1; j<Ny; j++){
         // j outside the hole
-        if (j<Ny1 || j>Ny2){
+        if (j==Ny-1){
+            for (i=1; i<Nx; i++){
+                Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)] \
+                                 -(Cp+Cn)*T[i+j*(Nx+1)] \
+                                 -Ce*T[(i+1)+j*(Nx+1)] \
+                                 -Cw*T[(i-1)+j*(Nx+1)] \
+                                 -Cs*T[i+(j-1)*(Nx+1)];
+                if (fabs(Res[i+j*(Nx+1)]) > res_max)
+                    res_max = fabs(Res[i+j*(Nx+1)]);
+            }
+        }
+        else if (j<Ny1 || j>Ny2){
             for (i=1; i<Nx; i++){
                 Res[i+j*(Nx+1)] = Src[i+j*(Nx+1)] \
                                  -Cp*T[i+j*(Nx+1)] \
